@@ -67,8 +67,12 @@ async function connectDB() {
       await pool.execute("ALTER TABLE demands ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
     } catch (e) {}
     try {
-      await pool.execute("UPDATE demands SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL OR created_at = '0000-00-00 00:00:00'");
-    } catch (e) {}
+      // Corrigir registros com data zerada ou nula ou com erro de epoch
+      await pool.execute("UPDATE demands SET created_at = NOW() WHERE created_at IS NULL OR created_at = '0000-00-00 00:00:00' OR created_at < '1971-01-01'");
+      console.log("Datas de demandas corrigidas.");
+    } catch (e) {
+      console.error("Erro ao corrigir datas:", e);
+    }
 
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS audit_logs (
@@ -220,6 +224,7 @@ app.put("/api/auth/theme", authenticate, async (req: AuthRequest, res) => {
 
   try {
     await pool.execute("UPDATE users SET theme = ? WHERE id = ?", [theme, req.user!.id]);
+    console.log(`Tema atualizado para usuário ${req.user!.id}: ${theme}`);
     
     // Atualizar o cookie com o novo tema
     const token = jwt.sign(
@@ -354,7 +359,7 @@ app.post("/api/demands", authenticate, async (req: AuthRequest, res) => {
     const prioValue = (priority !== undefined && priority !== null) ? parseInt(priority.toString()) : 1;
     
     const [result]: any = await pool.execute(
-      "INSERT INTO demands (name, description, priority, done) VALUES (?, ?, ?, ?)",
+      "INSERT INTO demands (name, description, priority, done, created_at) VALUES (?, ?, ?, ?, NOW())",
       [name || "Sem Nome", description || "", prioValue, 0]
     );
     

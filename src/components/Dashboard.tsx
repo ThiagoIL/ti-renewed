@@ -130,6 +130,20 @@ export default function Dashboard() {
     }
   };
 
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Data não disponível";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime()) || date.getFullYear() <= 1970) return "Data não disponível";
+    return date.toLocaleDateString('pt-BR');
+  };
+
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return "Data não disponível";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime()) || date.getFullYear() <= 1970) return "Data não disponível";
+    return date.toLocaleString('pt-BR');
+  };
+
   const filteredDemands = demands.filter(d => {
     const matchesSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase());
     let matchesPriority = true;
@@ -268,7 +282,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-4 mt-2">
                        <span className="text-xs text-slate-400 flex items-center gap-1">
                          <Clock className="w-3 h-3" />
-                         Criado em {demand.created_at ? new Date(demand.created_at).toLocaleDateString('pt-BR') : 'Data não disponível'}
+                         Criado em {formatDate(demand.created_at)}
                        </span>
                     </div>
                   </div>
@@ -455,8 +469,8 @@ export default function Dashboard() {
                         {selectedDemand.name}
                       </h2>
                       <p className="text-xs text-slate-400 font-medium uppercase mt-2">
-                        {selectedDemand.created_at 
-                          ? `Aberto em ${new Date(selectedDemand.created_at).toLocaleString('pt-BR')}`
+                        {formatDateTime(selectedDemand.created_at) !== 'Data não disponível' 
+                          ? `Aberto em ${formatDateTime(selectedDemand.created_at)}`
                           : 'Data de registro não disponível'
                         }
                       </p>
