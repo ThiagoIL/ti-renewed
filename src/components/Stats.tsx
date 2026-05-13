@@ -85,16 +85,16 @@ export default function Stats() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex items-center gap-4">
-        <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-200">
+        <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-200 dark:shadow-none">
           <LayoutDashboard className="w-8 h-8" />
         </div>
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Painel Executivo</h1>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Painel Executivo</h1>
           <p className="text-slate-500 font-medium">Clique nos cartões para explorar os detalhes</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <StatCard 
           label="Total" 
           value={total} 
@@ -108,7 +108,7 @@ export default function Stats() {
           icon={CheckCircle2} 
           color="bg-emerald-600" 
           onClick={() => handleCardClick("done")}
-          subtitle={`${((completed/total)*100 || 0).toFixed(1)}%`}
+          subtitle={`${((completed/total)*100 || 0).toFixed(0)}%`}
         />
         <StatCard 
           label="Pendentes" 
@@ -118,7 +118,7 @@ export default function Stats() {
           onClick={() => handleCardClick("pending")}
         />
         <StatCard 
-          label="Prioridade Alta" 
+          label="Alta Prio" 
           value={highPriority} 
           icon={AlertTriangle} 
           color="bg-rose-600" 
@@ -140,14 +140,12 @@ export default function Stats() {
         />
       </div>
 
-      {/* Espaço removido pois agora navega diretamente para as demandas */}
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Gráfico de Status */}
-        <div className="glass-card p-8 group hover:border-blue-200 transition-colors">
+        <div className="glass-card dark:bg-slate-900 dark:border-slate-800 p-8 group hover:border-blue-200 transition-colors">
           <div className="flex items-center gap-3 mb-8">
             <PieChartIcon className="w-5 h-5 text-slate-400" />
-            <h2 className="text-lg font-bold text-slate-800">Distribuição por Status</h2>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-white">Distribuição por Status</h2>
           </div>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -166,7 +164,8 @@ export default function Stats() {
                   ))}
                 </Pie>
                 <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: 'var(--tw-colors-slate-900)' }}
+                  itemStyle={{ color: '#fff' }}
                 />
                 <Legend iconType="circle" />
               </PieChart>
@@ -175,20 +174,21 @@ export default function Stats() {
         </div>
 
         {/* Gráfico de Prioridade */}
-        <div className="glass-card p-8 group hover:border-rose-200 transition-colors">
+        <div className="glass-card dark:bg-slate-900 dark:border-slate-800 p-8 group hover:border-rose-200 transition-colors">
           <div className="flex items-center gap-3 mb-8">
             <BarChart3 className="w-5 h-5 text-slate-400" />
-            <h2 className="text-lg font-bold text-slate-800">Carga por Prioridade</h2>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-white">Carga por Prioridade</h2>
           </div>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={priorityData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600 }} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" opacity={0.1} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: '#64748b' }} />
                 <YAxis hide />
                 <Tooltip 
-                   cursor={{ fill: '#f8fafc' }}
-                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                   cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: 'var(--tw-colors-slate-900)' }}
+                   itemStyle={{ color: '#fff' }}
                 />
                 <Bar dataKey="value" radius={[10, 10, 0, 0]}>
                   {priorityData.map((entry, index) => (
@@ -201,24 +201,25 @@ export default function Stats() {
         </div>
 
         {/* Gráfico de Tendência */}
-        <div className="glass-card p-8 lg:col-span-2 group hover:border-slate-300 transition-colors">
+        <div className="glass-card dark:bg-slate-900 dark:border-slate-800 p-8 lg:col-span-2 group hover:border-slate-300 transition-colors">
            <div className="flex justify-between items-center mb-8">
               <div className="flex items-center gap-3">
                 <TrendingUp className="w-5 h-5 text-slate-400" />
-                <h2 className="text-lg font-bold text-slate-800">Novas Demandas (Últimos 7 dias)</h2>
+                <h2 className="text-lg font-bold text-slate-800 dark:text-white">Novas Demandas (Últimos 7 dias)</h2>
               </div>
            </div>
            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={historyData}>
-                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 500 }} />
-                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" opacity={0.1} />
+                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 500, fill: '#64748b' }} />
+                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} />
                    <Tooltip 
-                      cursor={{ fill: '#f8fafc' }}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backgroundColor: 'var(--tw-colors-slate-900)' }}
+                      itemStyle={{ color: '#fff' }}
                    />
-                   <Bar dataKey="count" fill="#64748b" radius={[4, 4, 0, 0]} />
+                   <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
            </div>
@@ -232,13 +233,13 @@ function StatCard({ label, value, icon: Icon, color, subtitle, onClick }: any) {
   return (
     <button 
       onClick={onClick}
-      className={`glass-card p-6 relative overflow-hidden group hover:translate-y-[-4px] transition-all text-left w-full`}
+      className={`glass-card dark:bg-slate-900 dark:border-slate-800 p-6 relative overflow-hidden group hover:translate-y-[-4px] transition-all text-left w-full`}
     >
       <div className={`${color} absolute top-0 left-0 w-1 h-full opacity-60`}></div>
       <div className="flex justify-between items-start">
         <div className="space-y-1">
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{label}</p>
-          <h3 className="text-3xl font-black text-slate-900">{value}</h3>
+          <h3 className="text-3xl font-black text-slate-900 dark:text-white">{value}</h3>
           {subtitle && <p className="text-[10px] font-medium text-slate-400">{subtitle}</p>}
         </div>
         <div className={`${color} bg-opacity-10 p-2 rounded-xl group-hover:scale-110 transition-transform`}>

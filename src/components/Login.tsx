@@ -26,15 +26,15 @@ export default function Login() {
 
   return (
     <div className="flex items-center justify-center min-h-[80vh]">
-      <div className="w-full max-w-md bg-white border border-[#141414] p-8 shadow-[8px_8px_0px_0px_#141414]">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-[#141414] dark:border-slate-800 p-8 shadow-[8px_8px_0px_0px_#141414] dark:shadow-none transition-colors">
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-[#141414] p-3 mb-4">
-            <Shield className="w-8 h-8 text-[#E4E3E0]" />
+          <div className="bg-[#141414] dark:bg-blue-600 p-3 mb-4 rounded-xl">
+            <Shield className="w-8 h-8 text-[#E4E3E0] dark:text-white" />
           </div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 mb-1">
+          <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white mb-1">
             TI Demandas
           </h1>
-          <p className="text-sm font-medium opacity-40">Infraestrutura e Suporte</p>
+          <p className="text-sm font-medium opacity-40 dark:text-slate-400">Infraestrutura e Suporte</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -45,7 +45,7 @@ export default function Login() {
             <input
               type="email"
               required
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900 dark:text-white"
               placeholder="seu@empresa.com.br"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -58,7 +58,7 @@ export default function Login() {
             <input
               type="password"
               required
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-900 dark:text-white"
               placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -66,7 +66,7 @@ export default function Login() {
           </div>
 
           {error && (
-            <div className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-xl text-xs font-bold uppercase flex items-center gap-2">
+            <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-xs font-bold uppercase flex items-center gap-2">
                <Shield className="w-4 h-4" />
                {error}
             </div>
@@ -75,14 +75,14 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold uppercase hover:bg-slate-800 disabled:opacity-50 transition-all shadow-xl active:scale-95"
+            className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 rounded-xl font-bold uppercase hover:bg-slate-800 dark:hover:bg-blue-700 disabled:opacity-50 transition-all shadow-xl dark:shadow-none active:scale-95"
           >
             {loading ? "Autenticando..." : "Entrar no Sistema"}
           </button>
         </form>
         
-        <div className="mt-8 pt-6 border-t border-dashed border-slate-200">
-           <p className="text-[10px] font-bold text-slate-300 text-center uppercase tracking-widest">
+        <div className="mt-8 pt-6 border-t border-dashed border-slate-200 dark:border-slate-800">
+           <p className="text-[10px] font-bold text-slate-300 dark:text-slate-600 text-center uppercase tracking-widest">
              Sede Tecnológica v2.1
            </p>
         </div>

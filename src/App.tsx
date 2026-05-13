@@ -24,6 +24,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  theme: "light" | "dark";
+  toggleTheme: () => void;
   login: (userData: User) => void;
   logout: () => void;
 }
@@ -39,10 +41,24 @@ export const useAuth = () => {
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    return (localStorage.getItem("theme") as "light" | "dark") || "light";
+  });
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === "light" ? "dark" : "light");
 
   const checkAuth = async () => {
     try {
@@ -67,7 +83,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 font-sans">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950 font-sans transition-colors duration-300">
         <div className="flex flex-col items-center gap-4">
            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
            <div className="text-sm font-bold text-slate-400 uppercase tracking-widest animate-pulse">Iniciando Ambiente...</div>
@@ -77,9 +93,9 @@ export default function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, theme, toggleTheme, login, logout }}>
       <BrowserRouter>
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white transition-colors duration-300">
           {user && <Navbar />}
           <div className="max-w-7xl mx-auto px-4 py-8">
             <Routes>

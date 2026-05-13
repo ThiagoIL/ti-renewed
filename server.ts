@@ -259,8 +259,8 @@ app.post("/api/demands", authenticate, async (req: AuthRequest, res) => {
     const prioValue = (priority !== undefined && priority !== null) ? parseInt(priority.toString()) : 1;
     
     const [result]: any = await pool.execute(
-      "INSERT INTO demands (name, description, priority) VALUES (?, ?, ?)",
-      [name || "Sem Nome", description || "", prioValue]
+      "INSERT INTO demands (name, description, priority, done) VALUES (?, ?, ?, ?)",
+      [name || "Sem Nome", description || "", prioValue, 0]
     );
     
     await logAction(req.user!.id, "CREATE_DEMAND", "demands", result.insertId, `Criou demanda: ${name}`);

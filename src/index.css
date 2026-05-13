@@ -15,10 +15,10 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300;
   }
 }
 
 .glass-card {
-  @apply bg-white border border-slate-200 rounded-xl shadow-soft;
+  @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-soft dark:shadow-none transition-all;
 }
