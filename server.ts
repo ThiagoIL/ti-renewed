@@ -175,6 +175,48 @@ app.post("/api/users", authenticate, isMaster, async (req: AuthRequest, res) => 
   }
 });
 
+app.put("/api/users/:id", authenticate, isMaster, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { name, email, role, password } = req.body;
+  try {
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await pool.execute(
+        "UPDATE users SET name = ?, email = ?, role = ?, password = ? WHERE id = ?",
+        [name, email, role, hashedPassword, id]
+      );
+    } else {
+      await pool.execute(
+        "UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?",
+        [name, email, role, id]
+      );
+    }
+    await logAction(req.user!.id, "UPDATE_USER", "users", parseInt(id), `Atualizou usuário: ${email}`);
+    res.json({ id, name, email, role });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao atualizar usuário" });
+  }
+});
+
+app.delete("/api/users/:id", authenticate, isMaster, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  try {
+    const [rows]: any = await pool.execute("SELECT email FROM users WHERE id = ?", [id]);
+    const userEmail = rows[0]?.email || id;
+
+    if (parseInt(id) === req.user!.id) {
+      res.status(400).json({ error: "Não é possível excluir a si mesmo" });
+      return;
+    }
+
+    await pool.execute("DELETE FROM users WHERE id = ?", [id]);
+    await logAction(req.user!.id, "DELETE_USER", "users", parseInt(id), `Deletou usuário: ${userEmail}`);
+    res.json({ message: "Usuário excluído com sucesso" });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao excluir usuário" });
+  }
+});
+
 // Alterar Senha (Geral)
 app.post("/api/users/change-password", authenticate, async (req: AuthRequest, res) => {
   const { currentPassword, newPassword } = req.body;

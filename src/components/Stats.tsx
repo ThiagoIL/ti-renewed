@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -20,6 +21,7 @@ interface Demand {
 }
 
 export default function Stats() {
+  const navigate = useNavigate();
   const [demands, setDemands] = useState<Demand[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
@@ -27,6 +29,15 @@ export default function Stats() {
   useEffect(() => {
     fetchDemands();
   }, []);
+
+  const handleCardClick = (filter: string) => {
+    // Se já estiver ativo, navega para a página de demandas com esse filtro
+    if (activeFilter === filter) {
+      navigate("/demandas", { state: { filter } });
+    } else {
+      setActiveFilter(filter);
+    }
+  };
 
   const fetchDemands = async () => {
     try {
@@ -105,7 +116,7 @@ export default function Stats() {
           value={total} 
           icon={TrendingUp} 
           color="bg-blue-500" 
-          onClick={() => setActiveFilter(activeFilter === "total" ? null : "total")}
+          onClick={() => handleCardClick("total")}
           isActive={activeFilter === "total"}
         />
         <StatCard 
@@ -113,7 +124,7 @@ export default function Stats() {
           value={completed} 
           icon={CheckCircle2} 
           color="bg-emerald-500" 
-          onClick={() => setActiveFilter(activeFilter === "completed" ? null : "completed")}
+          onClick={() => handleCardClick("completed")}
           isActive={activeFilter === "completed"}
           subtitle={`${((completed/total)*100 || 0).toFixed(1)}% de eficácia`}
         />
@@ -122,7 +133,7 @@ export default function Stats() {
           value={pending} 
           icon={Clock} 
           color="bg-amber-500" 
-          onClick={() => setActiveFilter(activeFilter === "pending" ? null : "pending")}
+          onClick={() => handleCardClick("pending")}
           isActive={activeFilter === "pending"}
           subtitle="Aguardando ação"
         />
@@ -131,7 +142,7 @@ export default function Stats() {
           value={highPriority} 
           icon={AlertTriangle} 
           color="bg-rose-500" 
-          onClick={() => setActiveFilter(activeFilter === "high" ? null : "high")}
+          onClick={() => handleCardClick("high")}
           isActive={activeFilter === "high"}
           subtitle="Atenção necessária"
         />
@@ -151,9 +162,17 @@ export default function Stats() {
                     <TrendingUp className="w-4 h-4" />
                     Detalhamento: {activeFilter.toUpperCase()}
                   </h3>
-                  <button onClick={() => setActiveFilter(null)} className="text-slate-500 hover:text-white transition-colors">
-                     Esconder Detalhes
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => navigate("/demandas", { state: { filter: activeFilter } })}
+                      className="text-[10px] font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-full transition-all"
+                    >
+                      VER LISTA COMPLETA
+                    </button>
+                    <button onClick={() => setActiveFilter(null)} className="text-slate-500 hover:text-white transition-colors">
+                       Esconder
+                    </button>
+                  </div>
                </div>
                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {filteredList.length === 0 ? (

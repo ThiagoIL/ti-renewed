@@ -1,4 +1,5 @@
 import { useState, useEffect, FormEvent } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../lib/api";
 import { 
   Plus, CheckCircle2, Circle, AlertCircle, 
@@ -17,11 +18,14 @@ interface Demand {
   created_at: string;
 }
 
+type FilterType = "all" | "pending" | "done" | "high" | "normal" | "none";
+
 export default function Dashboard() {
+  const location = useLocation();
   const [demands, setDemands] = useState<Demand[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filter, setFilter] = useState<"all" | "pending" | "done">("all");
+  const [filter, setFilter] = useState<FilterType>("all");
   
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -34,7 +38,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchDemands();
-  }, []);
+    
+    // Check for filter in navigation state
+    if (location.state?.filter) {
+      setFilter(location.state.filter);
+    }
+  }, [location.state]);
 
   const fetchDemands = async () => {
     try {
@@ -66,7 +75,7 @@ export default function Dashboard() {
       }
       setShowAddModal(false);
       setEditingDemand(null);
-      setFormData({ name: "", description: "", priority: false });
+      setFormData({ name: "", description: "", priority: 1 });
       fetchDemands();
     } catch (err: any) {
       alert(`Erro no sistema: ` + err.message);
@@ -107,7 +116,14 @@ export default function Dashboard() {
 
   const filteredDemands = demands.filter(d => {
     const matchesSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filter === "all" ? true : filter === "done" ? d.done : !d.done;
+    let matchesFilter = true;
+    
+    if (filter === "pending") matchesFilter = !d.done;
+    else if (filter === "done") matchesFilter = !!d.done;
+    else if (filter === "high") matchesFilter = d.priority === 2;
+    else if (filter === "normal") matchesFilter = d.priority === 1;
+    else if (filter === "none") matchesFilter = d.priority === 0;
+
     return matchesSearch && matchesFilter;
   });
 
@@ -153,6 +169,9 @@ export default function Dashboard() {
              <option value="all">TODAS</option>
              <option value="pending">PENDENTES</option>
              <option value="done">CONCLUÍDAS</option>
+             <option value="high">ALTA PRIORIDADE</option>
+             <option value="normal">NORMAL</option>
+             <option value="none">SEM PRIORIDADE</option>
            </select>
         </div>
         <div className="flex items-center justify-end gap-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
