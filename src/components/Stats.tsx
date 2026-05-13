@@ -8,6 +8,7 @@ import {
   LayoutDashboard, CheckCircle2, Clock, AlertTriangle, 
   BarChart3, PieChart as PieChartIcon, TrendingUp
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 interface Demand {
   id: number;
@@ -21,6 +22,7 @@ interface Demand {
 export default function Stats() {
   const [demands, setDemands] = useState<Demand[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDemands();
@@ -48,8 +50,19 @@ export default function Stats() {
   const total = demands.length;
   const completed = demands.filter(d => d.done).length;
   const pending = total - completed;
-  const highPriority = demands.filter(d => d.priority).length;
-  const normalPriority = total - highPriority;
+  const highPriority = demands.filter(d => d.priority === 2).length;
+  const normalPriority = demands.filter(d => d.priority === 1).length;
+  const noPriority = total - highPriority - normalPriority;
+
+  const filteredList = demands.filter(d => {
+    if (activeFilter === "total") return true;
+    if (activeFilter === "completed") return !!d.done;
+    if (activeFilter === "pending") return !d.done;
+    if (activeFilter === "high") return d.priority === 2;
+    if (activeFilter === "normal") return d.priority === 1;
+    if (activeFilter === "none") return d.priority === 0;
+    return false;
+  });
 
   const statusData = [
     { name: 'Concluídas', value: completed, color: '#10b981' },
@@ -59,6 +72,7 @@ export default function Stats() {
   const priorityData = [
     { name: 'Alta', value: highPriority, color: '#f43f5e' },
     { name: 'Normal', value: normalPriority, color: '#3b82f6' },
+    { name: 'Sem Prio', value: noPriority, color: '#94a3b8' },
   ];
 
   // Agrupamento por dia (últimos 7 dias simplificado)
@@ -74,14 +88,14 @@ export default function Stats() {
   });
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex items-center gap-4">
         <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-200">
           <LayoutDashboard className="w-8 h-8" />
         </div>
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Painel Executivo</h1>
-          <p className="text-slate-500 font-medium">Indicadores de desempenho e fluxo de trabalho</p>
+          <p className="text-slate-500 font-medium">Clique nos cartões para explorar os detalhes</p>
         </div>
       </div>
 
@@ -91,12 +105,16 @@ export default function Stats() {
           value={total} 
           icon={TrendingUp} 
           color="bg-blue-500" 
+          onClick={() => setActiveFilter(activeFilter === "total" ? null : "total")}
+          isActive={activeFilter === "total"}
         />
         <StatCard 
           label="Concluídos" 
           value={completed} 
           icon={CheckCircle2} 
           color="bg-emerald-500" 
+          onClick={() => setActiveFilter(activeFilter === "completed" ? null : "completed")}
+          isActive={activeFilter === "completed"}
           subtitle={`${((completed/total)*100 || 0).toFixed(1)}% de eficácia`}
         />
         <StatCard 
@@ -104,6 +122,8 @@ export default function Stats() {
           value={pending} 
           icon={Clock} 
           color="bg-amber-500" 
+          onClick={() => setActiveFilter(activeFilter === "pending" ? null : "pending")}
+          isActive={activeFilter === "pending"}
           subtitle="Aguardando ação"
         />
         <StatCard 
@@ -111,9 +131,58 @@ export default function Stats() {
           value={highPriority} 
           icon={AlertTriangle} 
           color="bg-rose-500" 
+          onClick={() => setActiveFilter(activeFilter === "high" ? null : "high")}
+          isActive={activeFilter === "high"}
           subtitle="Atenção necessária"
         />
       </div>
+
+      <AnimatePresence>
+        {activeFilter && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="glass-card bg-slate-900 border-none p-6 text-white mb-8">
+               <div className="flex justify-between items-center mb-6">
+                  <h3 className="font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    Detalhamento: {activeFilter.toUpperCase()}
+                  </h3>
+                  <button onClick={() => setActiveFilter(null)} className="text-slate-500 hover:text-white transition-colors">
+                     Esconder Detalhes
+                  </button>
+               </div>
+               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {filteredList.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500 italic">Nenhuma demanda nesta categoria</div>
+                  ) : filteredList.map(demand => (
+                    <div key={demand.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
+                       <div className="flex flex-col">
+                          <span className="font-bold text-sm tracking-tight">{demand.name}</span>
+                          <span className="text-[10px] text-slate-500 uppercase">Protocolo: #{demand.id}</span>
+                       </div>
+                       <div className="flex items-center gap-4">
+                          {demand.priority === 2 ? (
+                            <span className="text-[9px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full font-bold">ALTA</span>
+                          ) : demand.priority === 1 ? (
+                            <span className="text-[9px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold">NORMAL</span>
+                          ) : (
+                            <span className="text-[9px] bg-slate-500/20 text-slate-400 px-2 py-0.5 rounded-full font-bold">S/ PRIO</span>
+                          )}
+                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${demand.done ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                             {demand.done ? 'OK' : 'PEND'}
+                          </span>
+                       </div>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Gráfico de Status */}
@@ -201,9 +270,14 @@ export default function Stats() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, color, subtitle }: any) {
+function StatCard({ label, value, icon: Icon, color, subtitle, onClick, isActive }: any) {
   return (
-    <div className="glass-card p-6 relative overflow-hidden group hover:translate-y-[-4px] transition-all">
+    <button 
+      onClick={onClick}
+      className={`glass-card p-6 relative overflow-hidden group hover:translate-y-[-4px] transition-all text-left w-full ${
+        isActive ? 'ring-2 ring-blue-500 bg-blue-50/10' : ''
+      }`}
+    >
       <div className={`${color} absolute top-0 left-0 w-1 h-full opacity-60`}></div>
       <div className="flex justify-between items-start">
         <div className="space-y-1">
@@ -211,10 +285,13 @@ function StatCard({ label, value, icon: Icon, color, subtitle }: any) {
           <h3 className="text-3xl font-black text-slate-900">{value}</h3>
           {subtitle && <p className="text-[10px] font-medium text-slate-400">{subtitle}</p>}
         </div>
-        <div className={`${color} bg-opacity-10 p-2 rounded-xl`}>
+        <div className={`${color} bg-opacity-10 p-2 rounded-xl group-hover:scale-110 transition-transform`}>
           <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
         </div>
       </div>
-    </div>
+      {isActive && (
+         <div className="absolute bottom-1 right-2 text-[8px] font-bold text-blue-500 animate-pulse">CLICADO</div>
+      )}
+    </button>
   );
 }

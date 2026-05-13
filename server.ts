@@ -215,7 +215,7 @@ app.post("/api/demands", authenticate, async (req: AuthRequest, res) => {
   try {
     const [result]: any = await pool.execute(
       "INSERT INTO demands (name, description, priority) VALUES (?, ?, ?)",
-      [name, description, priority ? 1 : 0]
+      [name, description, priority ?? 0]
     );
     
     await logAction(req.user!.id, "CREATE_DEMAND", "demands", result.insertId, `Criou demanda: ${name}`);
@@ -231,7 +231,7 @@ app.put("/api/demands/:id", authenticate, async (req: AuthRequest, res) => {
   try {
     await pool.execute(
       "UPDATE demands SET name = ?, description = ?, priority = ?, done = ? WHERE id = ?",
-      [name, description, priority ? 1 : 0, done ? 1 : 0, id]
+      [name, description, priority ?? 0, done ? 1 : 0, id]
     );
     
     await logAction(req.user!.id, "UPDATE_DEMAND", "demands", parseInt(id), `Atualizou demanda: ${name}`);

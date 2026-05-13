@@ -30,7 +30,7 @@ export default function Dashboard() {
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   // Form State
-  const [formData, setFormData] = useState({ name: "", description: "", priority: false });
+  const [formData, setFormData] = useState({ name: "", description: "", priority: 1 }); // 1 = Normal default
 
   useEffect(() => {
     fetchDemands();
@@ -53,7 +53,7 @@ export default function Dashboard() {
       const payload = {
         name: formData.name,
         description: formData.description,
-        priority: formData.priority ? 1 : 0
+        priority: formData.priority
       };
 
       if (editingDemand) {
@@ -78,7 +78,7 @@ export default function Dashboard() {
     setFormData({ 
       name: demand.name, 
       description: demand.description, 
-      priority: !!demand.priority 
+      priority: demand.priority 
     });
     setShowAddModal(true);
   };
@@ -122,7 +122,7 @@ export default function Dashboard() {
         <button 
           onClick={() => {
             setEditingDemand(null);
-            setFormData({ name: "", description: "", priority: false });
+            setFormData({ name: "", description: "", priority: 1 });
             setShowAddModal(true);
           }}
           className="flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95"
@@ -197,12 +197,18 @@ export default function Dashboard() {
                 </div>
 
                 <div className="col-span-2">
-                  {demand.priority ? (
-                    <span className="bg-rose-50 text-rose-600 text-[10px] font-bold px-2 py-1 rounded-full border border-rose-100">
-                      ALTA PRIORIDADE
+                  {demand.priority === 2 ? (
+                    <span className="bg-rose-100 text-rose-600 text-[10px] font-black px-3 py-1 rounded-full border border-rose-200 uppercase tracking-tighter">
+                      Alta Prioridade
+                    </span>
+                  ) : demand.priority === 1 ? (
+                    <span className="bg-blue-100 text-blue-600 text-[10px] font-bold px-3 py-1 rounded-full border border-blue-200 uppercase tracking-tighter">
+                      Normal
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Normal</span>
+                    <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full border border-slate-200 uppercase tracking-tighter">
+                      Sem Prioridade
+                    </span>
                   )}
                 </div>
 
@@ -300,15 +306,40 @@ export default function Dashboard() {
                     onChange={e => setFormData({...formData, description: e.target.value})}
                   />
                 </div>
-                <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                   <input 
-                    type="checkbox" 
-                    id="prio"
-                    className="w-5 h-5 rounded-md accent-blue-600 cursor-pointer"
-                    checked={formData.priority}
-                    onChange={e => setFormData({...formData, priority: e.target.checked})}
-                   />
-                   <label htmlFor="prio" className="text-sm font-bold text-slate-700 cursor-pointer">Definir como ALTA PRIORIDADE</label>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 grid grid-cols-3 gap-2">
+                   <div className="flex flex-col items-center gap-2">
+                      <input 
+                       type="radio" 
+                       id="prio_sem"
+                       name="priority"
+                       className="w-5 h-5 accent-slate-600 cursor-pointer"
+                       checked={formData.priority === 0}
+                       onChange={() => setFormData({...formData, priority: 0})}
+                      />
+                      <label htmlFor="prio_sem" className="text-[10px] font-bold text-slate-500 cursor-pointer text-center uppercase">Sem Prioridade</label>
+                   </div>
+                   <div className="flex flex-col items-center gap-2">
+                      <input 
+                       type="radio" 
+                       id="prio_normal"
+                       name="priority"
+                       className="w-5 h-5 accent-blue-600 cursor-pointer"
+                       checked={formData.priority === 1}
+                       onChange={() => setFormData({...formData, priority: 1})}
+                      />
+                      <label htmlFor="prio_normal" className="text-[10px] font-bold text-slate-700 cursor-pointer text-center uppercase">Normal</label>
+                   </div>
+                   <div className="flex flex-col items-center gap-2">
+                      <input 
+                       type="radio" 
+                       id="prio_alta"
+                       name="priority"
+                       className="w-5 h-5 accent-rose-600 cursor-pointer"
+                       checked={formData.priority === 2}
+                       onChange={() => setFormData({...formData, priority: 2})}
+                      />
+                      <label htmlFor="prio_alta" className="text-[10px] font-bold text-rose-600 cursor-pointer text-center uppercase">Alta Prioridade</label>
+                   </div>
                 </div>
                 <div className="pt-4 flex gap-3">
                   <button 
@@ -355,9 +386,13 @@ export default function Dashboard() {
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${selectedDemand.done ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
                           {selectedDemand.done ? 'Concluído' : 'Em Aberto'}
                         </span>
-                        {selectedDemand.priority ? (
-                          <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">Urgente</span>
-                        ) : null}
+                        {selectedDemand.priority === 2 ? (
+                          <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">Alta Prioridade</span>
+                        ) : selectedDemand.priority === 1 ? (
+                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">Normal</span>
+                        ) : (
+                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">Sem Prioridade</span>
+                        )}
                       </div>
                       <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-tight">
                         {selectedDemand.name}

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS demands (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     done TINYINT(1) DEFAULT 0,
-    priority TINYINT(1) DEFAULT 0,
+    priority TINYINT DEFAULT 1, -- 0: Sem Prioridade, 1: Normal, 2: Alta Prioridade
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
