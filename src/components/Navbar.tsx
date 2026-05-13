@@ -1,13 +1,14 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../App";
-import { LogOut, User, ClipboardList, Users, History, ShieldAlert } from "lucide-react";
+import { LogOut, User, ClipboardList, Users, History, ShieldAlert, LayoutDashboard } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const location = useLocation();
 
   const navItems = [
-    { path: "/", label: "Demandas", icon: ClipboardList },
+    { path: "/", label: "Painel", icon: LayoutDashboard },
+    { path: "/demandas", label: "Demandas", icon: ClipboardList },
     ...(user?.role === "master" ? [
       { path: "/admin/usuarios", label: "Usuários", icon: Users },
       { path: "/admin/auditoria", label: "Auditoria", icon: ShieldAlert },

@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-route
 import { api } from "./lib/api";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
+import Stats from "./components/Stats";
 import AdminUsers from "./components/AdminUsers";
 import AuditLogs from "./components/AuditLogs";
 import Profile from "./components/Profile";
@@ -88,6 +89,10 @@ export default function App() {
               />
               <Route 
                 path="/" 
+                element={user ? <Stats /> : <Navigate to="/login" />} 
+              />
+              <Route 
+                path="/demandas" 
                 element={user ? <Dashboard /> : <Navigate to="/login" />} 
               />
               <Route 

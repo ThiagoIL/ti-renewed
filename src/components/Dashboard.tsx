@@ -50,22 +50,26 @@ export default function Dashboard() {
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        priority: formData.priority ? 1 : 0
+      };
+
       if (editingDemand) {
         await api.put(`/demands/${editingDemand.id}`, {
           ...editingDemand,
-          name: formData.name,
-          description: formData.description,
-          priority: formData.priority ? 1 : 0
+          ...payload
         });
       } else {
-        await api.post("/demands", formData);
+        await api.post("/demands", payload);
       }
       setShowAddModal(false);
       setEditingDemand(null);
       setFormData({ name: "", description: "", priority: false });
       fetchDemands();
     } catch (err: any) {
-      alert(`Erro ao ${editingDemand ? 'atualizar' : 'criar'} demanda: ` + err.message);
+      alert(`Erro no sistema: ` + err.message);
     }
   };
 
