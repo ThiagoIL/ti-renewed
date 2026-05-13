@@ -67,7 +67,7 @@ export default function Stats() {
 
   const filteredList = demands.filter(d => {
     if (activeFilter === "total") return true;
-    if (activeFilter === "completed") return !!d.done;
+    if (activeFilter === "done") return !!d.done;
     if (activeFilter === "pending") return !d.done;
     if (activeFilter === "high") return d.priority === 2;
     if (activeFilter === "normal") return d.priority === 1;
@@ -124,8 +124,8 @@ export default function Stats() {
           value={completed} 
           icon={CheckCircle2} 
           color="bg-emerald-500" 
-          onClick={() => handleCardClick("completed")}
-          isActive={activeFilter === "completed"}
+          onClick={() => handleCardClick("done")}
+          isActive={activeFilter === "done"}
           subtitle={`${((completed/total)*100 || 0).toFixed(1)}% de eficácia`}
         />
         <StatCard 
@@ -174,26 +174,27 @@ export default function Stats() {
                     </button>
                   </div>
                </div>
-               <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+               <div className="space-y-3 max-h-[450px] overflow-y-auto pr-4 custom-scrollbar">
                   {filteredList.length === 0 ? (
-                    <div className="p-8 text-center text-slate-500 italic">Nenhuma demanda nesta categoria</div>
+                    <div className="p-12 text-center text-slate-500 italic font-medium">Nenhuma demanda encontrada nesta categoria energética.</div>
                   ) : filteredList.map(demand => (
-                    <div key={demand.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors">
-                       <div className="flex flex-col">
-                          <span className="font-bold text-sm tracking-tight">{demand.name}</span>
-                          <span className="text-[10px] text-slate-500 uppercase">Protocolo: #{demand.id}</span>
+                    <div key={demand.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-all group">
+                       <div className="flex flex-col gap-1">
+                          <span className="font-bold text-sm tracking-tight text-slate-100 group-hover:text-blue-400 transition-colors">{demand.name}</span>
+                          <div className="flex items-center gap-2">
+                             <span className="text-[9px] font-black text-slate-500 bg-white/5 px-2 py-0.5 rounded uppercase tracking-widest">#{demand.id}</span>
+                             <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter italic">há {Math.floor((new Date().getTime() - new Date(demand.created_at).getTime()) / (1000 * 3600 * 24))} dias</span>
+                          </div>
                        </div>
-                       <div className="flex items-center gap-4">
+                       <div className="flex items-center gap-3">
                           {demand.priority === 2 ? (
-                            <span className="text-[9px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded-full font-bold">ALTA</span>
+                            <span className="text-[9px] bg-rose-500/20 text-rose-400 px-3 py-1 rounded-lg border border-rose-500/30 font-black uppercase">ALTA</span>
                           ) : demand.priority === 1 ? (
-                            <span className="text-[9px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full font-bold">NORMAL</span>
+                            <span className="text-[9px] bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg border border-blue-500/30 font-black uppercase">NORMAL</span>
                           ) : (
-                            <span className="text-[9px] bg-slate-500/20 text-slate-400 px-2 py-0.5 rounded-full font-bold">S/ PRIO</span>
+                            <span className="text-[9px] bg-slate-500/20 text-slate-400 px-3 py-1 rounded-lg border border-slate-500/30 font-black uppercase">S/ PRIO</span>
                           )}
-                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${demand.done ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                             {demand.done ? 'OK' : 'PEND'}
-                          </span>
+                          <div className={`w-3 h-3 rounded-full ${demand.done ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'}`}></div>
                        </div>
                     </div>
                   ))}

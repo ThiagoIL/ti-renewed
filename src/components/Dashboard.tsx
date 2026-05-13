@@ -4,7 +4,7 @@ import { api } from "../lib/api";
 import { 
   Plus, CheckCircle2, Circle, AlertCircle, 
   Trash2, Edit3, Eye, Search, Filter,
-  CheckCircle,
+  CheckCircle, Clock,
   X
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
+  const [activeTab, setActiveTab] = useState<"pending" | "done">("pending");
   
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -41,7 +42,13 @@ export default function Dashboard() {
     
     // Check for filter in navigation state
     if (location.state?.filter) {
-      setFilter(location.state.filter);
+      const newFilter = location.state.filter;
+      setFilter(newFilter);
+      if (newFilter === "completed" || newFilter === "done") {
+        setActiveTab("done");
+      } else {
+        setActiveTab("pending");
+      }
     }
   }, [location.state]);
 
@@ -127,6 +134,9 @@ export default function Dashboard() {
     return matchesSearch && matchesFilter;
   });
 
+  const pendingDemands = filteredDemands.filter(d => !d.done);
+  const doneDemands = filteredDemands.filter(d => !!d.done);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -178,105 +188,115 @@ export default function Dashboard() {
            <span className="bg-slate-100 px-2 py-1 rounded">Total: {filteredDemands.length}</span>
            <span className="bg-orange-50 text-orange-600 px-2 py-1 rounded">Pendentes: {demands.filter(d => !d.done).length}</span>
         </div>
-      </div>
-
-      <div className="glass-card overflow-hidden">
-        <div className="hidden md:grid grid-cols-12 bg-slate-50/50 border-b border-slate-100 p-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-          <div className="col-span-1">STATUS</div>
-          <div className="col-span-6">DESCRIÇÃO DO CHAMADO</div>
-          <div className="col-span-2">PRIORIDADE</div>
-          <div className="col-span-3 text-right">AÇÕES</div>
+      </div>      <div className="glass-card overflow-hidden border-none shadow-xl">
+        <div className="flex border-b border-slate-100 bg-white">
+          <button 
+            onClick={() => setActiveTab("pending")}
+            className={`flex-1 py-4 text-sm font-black uppercase tracking-widest transition-all border-b-2 ${
+              activeTab === "pending" 
+                ? "border-blue-600 text-blue-600 bg-blue-50/30" 
+                : "border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            Pendentes ({pendingDemands.length})
+          </button>
+          <button 
+            onClick={() => setActiveTab("done")}
+            className={`flex-1 py-4 text-sm font-black uppercase tracking-widest transition-all border-b-2 ${
+              activeTab === "done" 
+                ? "border-green-600 text-green-600 bg-green-50/30" 
+                : "border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            Concluídos ({doneDemands.length})
+          </button>
         </div>
 
-        <div className="divide-y divide-slate-100">
-          {loading ? (
-            <div className="p-12 text-center text-slate-400 font-medium animate-pulse">Sincronizando Banco de Dados...</div>
-          ) : filteredDemands.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 font-medium italic">Nenhum chamado encontrado</div>
-          ) : (
-            filteredDemands.map((demand) => (
-              <div key={demand.id} className="grid grid-cols-1 md:grid-cols-12 p-4 items-center gap-4 hover:bg-slate-50/80 transition-colors group">
-                <div className="col-span-1 flex justify-center">
-                  <button 
-                    onClick={() => handleToggleDone(demand)}
-                    className={`p-2 rounded-full transition-all ${demand.done ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-300 hover:text-slate-500'}`}
-                  >
-                    {demand.done ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
-                  </button>
-                </div>
-                
-                <div className="col-span-6">
-                  <div className={`text-base font-bold text-slate-800 ${demand.done ? 'line-through opacity-40' : ''}`}>
-                    {demand.name}
+        <div className="p-6 bg-slate-50/50">
+          <div className="space-y-4">
+            {loading ? (
+              <div className="p-12 text-center text-slate-400 font-medium animate-pulse">Sincronizando Banco de Dados...</div>
+            ) : (activeTab === "pending" ? pendingDemands : doneDemands).length === 0 ? (
+              <div className="p-12 text-center text-slate-400 font-medium italic">Nenhum chamado encontrado nesta categoria</div>
+            ) : (
+              (activeTab === "pending" ? pendingDemands : doneDemands).map((demand) => (
+                <div 
+                  key={demand.id} 
+                  className="bg-white rounded-2xl p-5 border border-slate-100 soft-shadow hover:border-blue-200 transition-all group flex flex-col md:flex-row md:items-center gap-6"
+                >
+                  <div className="flex-shrink-0">
+                    <button 
+                      onClick={() => handleToggleDone(demand)}
+                      className={`p-3 rounded-2xl transition-all ${demand.done ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-300 hover:scale-110 hover:text-blue-500'}`}
+                    >
+                      {demand.done ? <CheckCircle2 className="w-8 h-8" /> : <Circle className="w-8 h-8" />}
+                    </button>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded leading-none">#{demand.id}</span>
-                    <span className="text-[10px] font-medium text-slate-400 uppercase italic">Criado em {new Date(demand.created_at).toLocaleDateString()}</span>
+                  
+                  <div className="flex-grow">
+                    <div className="flex items-center gap-3 mb-1">
+                      {demand.priority === 2 ? (
+                        <span className="bg-rose-50 text-rose-600 text-[9px] font-black px-2 py-1 rounded-lg border border-rose-100 uppercase">Alta Prio</span>
+                      ) : demand.priority === 1 ? (
+                        <span className="bg-blue-50 text-blue-600 text-[9px] font-black px-2 py-1 rounded-lg border border-blue-100 uppercase">Normal</span>
+                      ) : (
+                        <span className="bg-slate-100 text-slate-500 text-[9px] font-black px-2 py-1 rounded-lg border border-slate-200 uppercase">Sem Prio</span>
+                      )}
+                      <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded leading-none">#{demand.id}</span>
+                    </div>
+                    <h3 className={`text-lg font-bold text-slate-800 ${demand.done ? 'line-through opacity-40' : ''}`}>
+                      {demand.name}
+                    </h3>
+                    <div className="flex items-center gap-4 mt-2">
+                       <span className="text-xs text-slate-400 flex items-center gap-1">
+                         <Clock className="w-3 h-3" />
+                         Criado em {new Date(demand.created_at).toLocaleDateString()}
+                       </span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="col-span-2">
-                  {demand.priority === 2 ? (
-                    <span className="bg-rose-100 text-rose-600 text-[10px] font-black px-3 py-1 rounded-full border border-rose-200 uppercase tracking-tighter">
-                      Alta Prioridade
-                    </span>
-                  ) : demand.priority === 1 ? (
-                    <span className="bg-blue-100 text-blue-600 text-[10px] font-bold px-3 py-1 rounded-full border border-blue-200 uppercase tracking-tighter">
-                      Normal
-                    </span>
-                  ) : (
-                    <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full border border-slate-200 uppercase tracking-tighter">
-                      Sem Prioridade
-                    </span>
-                  )}
-                </div>
-
-                <div className="col-span-3">
-                  <div className="flex justify-end gap-2">
+                  <div className="flex items-center gap-2 justify-end">
                     <button 
                       onClick={() => setSelectedDemand(demand)}
-                      title="Ver detalhes"
-                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                     >
-                      <Eye className="w-5 h-5" />
+                      <Eye className="w-6 h-6" />
                     </button>
                     <button 
                       onClick={() => handleEdit(demand)}
-                      title="Editar"
-                      className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                      className="p-3 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
                     >
-                      <Edit3 className="w-5 h-5" />
+                      <Edit3 className="w-6 h-6" />
                     </button>
                     
                     {isDeleting === demand.id ? (
-                      <div className="flex gap-1 animate-in fade-in slide-in-from-right-2 duration-200">
+                      <div className="flex gap-2 animate-in fade-in slide-in-from-right-2 duration-200">
                         <button 
                            onClick={() => handleDelete(demand.id)}
-                           className="bg-rose-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-rose-700"
+                           className="bg-rose-600 text-white text-xs font-black px-4 py-2 rounded-xl shadow-lg hover:bg-rose-700"
                         >
-                          CONFIRMAR
+                          EXCLUIR
                         </button>
                         <button 
                            onClick={() => setIsDeleting(null)}
-                           className="bg-slate-200 text-slate-600 text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-slate-300"
+                           className="bg-slate-200 text-slate-600 px-3 py-2 rounded-xl hover:bg-slate-300"
                         >
-                          X
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
                       <button 
                         onClick={() => setIsDeleting(demand.id)}
-                        title="Excluir"
-                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                        className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-6 h-6" />
                       </button>
                     )}
                   </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
 
