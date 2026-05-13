@@ -66,8 +66,11 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#E4E3E0] font-sans">
-        <div className="text-xl font-mono animate-pulse">CARREGANDO SISTEMA...</div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 font-sans">
+        <div className="flex flex-col items-center gap-4">
+           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+           <div className="text-sm font-bold text-slate-400 uppercase tracking-widest animate-pulse">Iniciando Ambiente...</div>
+        </div>
       </div>
     );
   }
@@ -75,7 +78,7 @@ export default function App() {
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
       <BrowserRouter>
-        <div className="min-h-screen bg-[#E4E3E0] text-[#141414] font-sans selection:bg-[#141414] selection:text-[#E4E3E0]">
+        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white">
           {user && <Navbar />}
           <div className="max-w-7xl mx-auto px-4 py-8">
             <Routes>

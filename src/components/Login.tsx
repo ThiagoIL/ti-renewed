@@ -31,34 +31,34 @@ export default function Login() {
           <div className="bg-[#141414] p-3 mb-4">
             <Shield className="w-8 h-8 text-[#E4E3E0]" />
           </div>
-          <h1 className="text-2xl font-mono font-bold uppercase tracking-tighter">
-            Gestão de TI
+          <h1 className="text-2xl font-black uppercase tracking-tighter text-slate-900 mb-1">
+            TI Demandas
           </h1>
-          <p className="text-sm font-mono opacity-60">Acesso Restrito</p>
+          <p className="text-sm font-medium opacity-40">Infraestrutura e Suporte</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-xs font-mono uppercase opacity-50 mb-1">
-              E-mail
+            <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-widest mb-1.5">
+              E-mail Corporativo
             </label>
             <input
               type="email"
               required
-              className="w-full border-b border-[#141414] py-2 focus:outline-none focus:border-b-2 font-mono"
-              placeholder="seu@email.com"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+              placeholder="seu@empresa.com.br"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div>
-            <label className="block text-xs font-mono uppercase opacity-50 mb-1">
-              Senha
+            <label className="block text-[10px] font-bold uppercase text-slate-400 tracking-widest mb-1.5">
+              Chave de Acesso
             </label>
             <input
               type="password"
               required
-              className="w-full border-b border-[#141414] py-2 focus:outline-none focus:border-b-2 font-mono"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
               placeholder="********"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -66,23 +66,24 @@ export default function Login() {
           </div>
 
           {error && (
-            <div className="bg-red-100 text-red-600 p-3 text-xs font-mono uppercase">
-              {error}
+            <div className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-xl text-xs font-bold uppercase flex items-center gap-2">
+               <Shield className="w-4 h-4" />
+               {error}
             </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#141414] text-[#E4E3E0] py-3 font-mono font-bold uppercase hover:opacity-90 disabled:opacity-50 transition-opacity"
+            className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold uppercase hover:bg-slate-800 disabled:opacity-50 transition-all shadow-xl active:scale-95"
           >
-            {loading ? "Entrando..." : "Entrar"}
+            {loading ? "Autenticando..." : "Entrar no Sistema"}
           </button>
         </form>
         
-        <div className="mt-8 pt-6 border-top border-dashed border-[#141414] border-t opacity-40">
-           <p className="text-[10px] font-mono text-center">
-             SISTEMA DE GESTÃO DE TI v2.0
+        <div className="mt-8 pt-6 border-t border-dashed border-slate-200">
+           <p className="text-[10px] font-bold text-slate-300 text-center uppercase tracking-widest">
+             Sede Tecnológica v2.1
            </p>
         </div>
       </div>
