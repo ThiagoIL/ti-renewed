@@ -31,6 +31,62 @@ async function connectDB() {
     pool = await mysql.createPool(dbConfig);
     console.log("Conectado ao MySQL com sucesso!");
     
+    // Inicialização do Banco de Dados
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role ENUM('master', 'colaborador') NOT NULL DEFAULT 'colaborador',
+        theme VARCHAR(10) DEFAULT 'light',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Garantir que a coluna 'theme' existe (para bancos já criados)
+    try {
+      await pool.execute("ALTER TABLE users ADD COLUMN theme VARCHAR(10) DEFAULT 'light'");
+    } catch (e) {
+      // Coluna já existe, ignore
+    }
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS demands (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        priority INT DEFAULT 1,
+        done TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Garantir que a coluna 'created_at' existe em demandas e auditoria
+    try {
+      await pool.execute("ALTER TABLE demands ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+    } catch (e) {}
+    try {
+      await pool.execute("UPDATE demands SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL OR created_at = '0000-00-00 00:00:00'");
+    } catch (e) {}
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT,
+        action VARCHAR(255) NOT NULL,
+        target_type VARCHAR(50),
+        target_id INT,
+        details TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+    
+    try {
+      await pool.execute("ALTER TABLE audit_logs ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+    } catch (e) {}
+
     // Teste de conexão e criação do admin inicial se necessário
     const [rows]: any = await pool.execute("SELECT * FROM users WHERE role = 'master' LIMIT 1");
     if (rows.length === 0) {
@@ -43,7 +99,6 @@ async function connectDB() {
     }
   } catch (error) {
     console.error("Erro ao conectar ao MySQL:", error);
-    // Se falhar o MySQL aqui no preview (sem banco local), o app vai dar erro nas chamadas de API.
   }
 }
 
@@ -56,6 +111,7 @@ interface AuthRequest extends Request {
     name: string;
     email: string;
     role: "master" | "colaborador";
+    theme: "light" | "dark";
   };
 }
 
@@ -119,7 +175,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, name: user.name, email: user.email, role: user.role },
+      { id: user.id, name: user.name, email: user.email, role: user.role, theme: user.theme || 'light' },
       JWT_SECRET,
       { expiresIn: "1d" }
     );
@@ -130,7 +186,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
       maxAge: 86400000,
     });
 
-    res.json({ id: user.id, name: user.name, email: user.email, role: user.role });
+    res.json({ id: user.id, name: user.name, email: user.email, role: user.role, theme: user.theme || 'light' });
   } catch (error) {
     res.status(500).json({ error: "Erro interno no servidor" });
   }
@@ -141,8 +197,47 @@ app.post("/api/auth/logout", (req, res) => {
   res.json({ message: "Logout realizado com sucesso" });
 });
 
-app.get("/api/auth/me", authenticate, (req: AuthRequest, res) => {
-  res.json(req.user);
+app.get("/api/auth/me", authenticate, async (req: AuthRequest, res) => {
+  try {
+    const [rows]: any = await pool.execute("SELECT id, name, email, role, theme FROM users WHERE id = ?", [req.user?.id]);
+    if (rows.length === 0) {
+      res.status(404).json({ error: "Usuário não encontrado" });
+      return;
+    }
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao buscar dados do usuário" });
+  }
+});
+
+// Atualizar Tema
+app.put("/api/auth/theme", authenticate, async (req: AuthRequest, res) => {
+  const { theme } = req.body;
+  if (theme !== "light" && theme !== "dark") {
+    res.status(400).json({ error: "Tema inválido" });
+    return;
+  }
+
+  try {
+    await pool.execute("UPDATE users SET theme = ? WHERE id = ?", [theme, req.user!.id]);
+    
+    // Atualizar o cookie com o novo tema
+    const token = jwt.sign(
+      { ...req.user, theme },
+      JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 86400000,
+    });
+
+    res.json({ success: true, theme });
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao atualizar tema" });
+  }
 });
 
 // Usuários (Apenas Master)

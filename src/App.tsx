@@ -19,6 +19,7 @@ interface User {
   name: string;
   email: string;
   role: "master" | "colaborador";
+  theme: "light" | "dark";
 }
 
 interface AuthContextType {
@@ -41,9 +42,9 @@ export const useAuth = () => {
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    return (localStorage.getItem("theme") as "light" | "dark") || "light";
-  });
+  const [theme, setTheme] = useState<"light" | "dark">(
+    (localStorage.getItem("theme") as "light" | "dark") || "light"
+  );
 
   useEffect(() => {
     checkAuth();
@@ -55,15 +56,31 @@ export default function App() {
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("theme", theme);
   }, [theme]);
 
-  const toggleTheme = () => setTheme(prev => prev === "light" ? "dark" : "light");
+  const toggleTheme = async () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    
+    if (user) {
+      try {
+        await api.put("/auth/theme", { theme: newTheme });
+        setUser({ ...user, theme: newTheme });
+      } catch (error) {
+        console.error("Erro ao salvar tema no perfil", error);
+      }
+    }
+  };
 
   const checkAuth = async () => {
     try {
       const userData = await api.get("/auth/me");
       setUser(userData);
+      if (userData.theme) {
+        setTheme(userData.theme);
+        localStorage.setItem("theme", userData.theme);
+      }
     } catch (error) {
       setUser(null);
     } finally {
@@ -71,7 +88,13 @@ export default function App() {
     }
   };
 
-  const login = (userData: User) => setUser(userData);
+  const login = (userData: User) => {
+    setUser(userData);
+    if (userData.theme) {
+      setTheme(userData.theme);
+      localStorage.setItem("theme", userData.theme);
+    }
+  };
   const logout = async () => {
     try {
       await api.post("/auth/logout", {});

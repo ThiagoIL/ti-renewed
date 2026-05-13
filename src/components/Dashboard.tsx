@@ -268,7 +268,7 @@ export default function Dashboard() {
                     <div className="flex items-center gap-4 mt-2">
                        <span className="text-xs text-slate-400 flex items-center gap-1">
                          <Clock className="w-3 h-3" />
-                         Criado em {new Date(demand.created_at).toLocaleDateString()}
+                         Criado em {demand.created_at ? new Date(demand.created_at).toLocaleDateString('pt-BR') : 'Data não disponível'}
                        </span>
                     </div>
                   </div>
@@ -455,7 +455,10 @@ export default function Dashboard() {
                         {selectedDemand.name}
                       </h2>
                       <p className="text-xs text-slate-400 font-medium uppercase mt-2">
-                        Aberto em {new Date(selectedDemand.created_at).toLocaleString()}
+                        {selectedDemand.created_at 
+                          ? `Aberto em ${new Date(selectedDemand.created_at).toLocaleString('pt-BR')}`
+                          : 'Data de registro não disponível'
+                        }
                       </p>
                     </div>
                     <button onClick={() => setSelectedDemand(null)} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">

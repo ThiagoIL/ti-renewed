@@ -78,7 +78,7 @@ export default function Stats() {
   }).reverse();
 
   const historyData = last7Days.map(date => {
-    const count = demands.filter(d => d.created_at.startsWith(date)).length;
+    const count = demands.filter(d => d.created_at && d.created_at.toString().startsWith(date)).length;
     return { date: date.split('-').slice(1).reverse().join('/'), count };
   });
 
