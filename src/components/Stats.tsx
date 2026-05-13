@@ -24,19 +24,13 @@ export default function Stats() {
   const navigate = useNavigate();
   const [demands, setDemands] = useState<Demand[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDemands();
   }, []);
 
   const handleCardClick = (filter: string) => {
-    // Se já estiver ativo, navega para a página de demandas com esse filtro
-    if (activeFilter === filter) {
-      navigate("/demandas", { state: { filter } });
-    } else {
-      setActiveFilter(filter);
-    }
+    navigate("/demandas", { state: { filter } });
   };
 
   const fetchDemands = async () => {
@@ -64,16 +58,6 @@ export default function Stats() {
   const highPriority = demands.filter(d => d.priority === 2).length;
   const normalPriority = demands.filter(d => d.priority === 1).length;
   const noPriority = total - highPriority - normalPriority;
-
-  const filteredList = demands.filter(d => {
-    if (activeFilter === "total") return true;
-    if (activeFilter === "done") return !!d.done;
-    if (activeFilter === "pending") return !d.done;
-    if (activeFilter === "high") return d.priority === 2;
-    if (activeFilter === "normal") return d.priority === 1;
-    if (activeFilter === "none") return d.priority === 0;
-    return false;
-  });
 
   const statusData = [
     { name: 'Concluídas', value: completed, color: '#10b981' },
@@ -110,99 +94,53 @@ export default function Stats() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatCard 
-          label="Total de Chamados" 
+          label="Total" 
           value={total} 
           icon={TrendingUp} 
-          color="bg-blue-500" 
+          color="bg-blue-600" 
           onClick={() => handleCardClick("total")}
-          isActive={activeFilter === "total"}
         />
         <StatCard 
           label="Concluídos" 
           value={completed} 
           icon={CheckCircle2} 
-          color="bg-emerald-500" 
+          color="bg-emerald-600" 
           onClick={() => handleCardClick("done")}
-          isActive={activeFilter === "done"}
-          subtitle={`${((completed/total)*100 || 0).toFixed(1)}% de eficácia`}
+          subtitle={`${((completed/total)*100 || 0).toFixed(1)}%`}
         />
         <StatCard 
           label="Pendentes" 
           value={pending} 
           icon={Clock} 
-          color="bg-amber-500" 
+          color="bg-amber-600" 
           onClick={() => handleCardClick("pending")}
-          isActive={activeFilter === "pending"}
-          subtitle="Aguardando ação"
         />
         <StatCard 
-          label="Alta Prioridade" 
+          label="Prioridade Alta" 
           value={highPriority} 
           icon={AlertTriangle} 
-          color="bg-rose-500" 
+          color="bg-rose-600" 
           onClick={() => handleCardClick("high")}
-          isActive={activeFilter === "high"}
-          subtitle="Atenção necessária"
+        />
+        <StatCard 
+          label="Normal" 
+          value={normalPriority} 
+          icon={BarChart3} 
+          color="bg-sky-600" 
+          onClick={() => handleCardClick("normal")}
+        />
+        <StatCard 
+          label="Sem Prio" 
+          value={noPriority} 
+          icon={LayoutDashboard} 
+          color="bg-slate-500" 
+          onClick={() => handleCardClick("none")}
         />
       </div>
 
-      <AnimatePresence>
-        {activeFilter && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="glass-card bg-slate-900 border-none p-6 text-white mb-8">
-               <div className="flex justify-between items-center mb-6">
-                  <h3 className="font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" />
-                    Detalhamento: {activeFilter.toUpperCase()}
-                  </h3>
-                  <div className="flex items-center gap-4">
-                    <button 
-                      onClick={() => navigate("/demandas", { state: { filter: activeFilter } })}
-                      className="text-[10px] font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-full transition-all"
-                    >
-                      VER LISTA COMPLETA
-                    </button>
-                    <button onClick={() => setActiveFilter(null)} className="text-slate-500 hover:text-white transition-colors">
-                       Esconder
-                    </button>
-                  </div>
-               </div>
-               <div className="space-y-3 max-h-[450px] overflow-y-auto pr-4 custom-scrollbar">
-                  {filteredList.length === 0 ? (
-                    <div className="p-12 text-center text-slate-500 italic font-medium">Nenhuma demanda encontrada nesta categoria energética.</div>
-                  ) : filteredList.map(demand => (
-                    <div key={demand.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-all group">
-                       <div className="flex flex-col gap-1">
-                          <span className="font-bold text-sm tracking-tight text-slate-100 group-hover:text-blue-400 transition-colors">{demand.name}</span>
-                          <div className="flex items-center gap-2">
-                             <span className="text-[9px] font-black text-slate-500 bg-white/5 px-2 py-0.5 rounded uppercase tracking-widest">#{demand.id}</span>
-                             <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter italic">há {Math.floor((new Date().getTime() - new Date(demand.created_at).getTime()) / (1000 * 3600 * 24))} dias</span>
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-3">
-                          {demand.priority === 2 ? (
-                            <span className="text-[9px] bg-rose-500/20 text-rose-400 px-3 py-1 rounded-lg border border-rose-500/30 font-black uppercase">ALTA</span>
-                          ) : demand.priority === 1 ? (
-                            <span className="text-[9px] bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg border border-blue-500/30 font-black uppercase">NORMAL</span>
-                          ) : (
-                            <span className="text-[9px] bg-slate-500/20 text-slate-400 px-3 py-1 rounded-lg border border-slate-500/30 font-black uppercase">S/ PRIO</span>
-                          )}
-                          <div className={`w-3 h-3 rounded-full ${demand.done ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]'}`}></div>
-                       </div>
-                    </div>
-                  ))}
-               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Espaço removido pois agora navega diretamente para as demandas */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Gráfico de Status */}
@@ -290,13 +228,11 @@ export default function Stats() {
   );
 }
 
-function StatCard({ label, value, icon: Icon, color, subtitle, onClick, isActive }: any) {
+function StatCard({ label, value, icon: Icon, color, subtitle, onClick }: any) {
   return (
     <button 
       onClick={onClick}
-      className={`glass-card p-6 relative overflow-hidden group hover:translate-y-[-4px] transition-all text-left w-full ${
-        isActive ? 'ring-2 ring-blue-500 bg-blue-50/10' : ''
-      }`}
+      className={`glass-card p-6 relative overflow-hidden group hover:translate-y-[-4px] transition-all text-left w-full`}
     >
       <div className={`${color} absolute top-0 left-0 w-1 h-full opacity-60`}></div>
       <div className="flex justify-between items-start">
@@ -309,9 +245,6 @@ function StatCard({ label, value, icon: Icon, color, subtitle, onClick, isActive
           <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
         </div>
       </div>
-      {isActive && (
-         <div className="absolute bottom-1 right-2 text-[8px] font-bold text-blue-500 animate-pulse">CLICADO</div>
-      )}
     </button>
   );
 }

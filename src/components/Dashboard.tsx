@@ -43,10 +43,19 @@ export default function Dashboard() {
     // Check for filter in navigation state
     if (location.state?.filter) {
       const newFilter = location.state.filter;
-      setFilter(newFilter);
-      if (newFilter === "completed" || newFilter === "done") {
+      
+      if (newFilter === "total") {
+        setFilter("all");
+        setActiveTab("pending");
+      } else if (newFilter === "completed" || newFilter === "done") {
+        setFilter("all"); // Mostra todas as prioridades mas na aba concluídos
         setActiveTab("done");
+      } else if (newFilter === "pending") {
+        setFilter("all");
+        setActiveTab("pending");
       } else {
+        // Assume que é um filtro de prioridade
+        setFilter(newFilter as any);
         setActiveTab("pending");
       }
     }
@@ -123,15 +132,13 @@ export default function Dashboard() {
 
   const filteredDemands = demands.filter(d => {
     const matchesSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase());
-    let matchesFilter = true;
+    let matchesPriority = true;
     
-    if (filter === "pending") matchesFilter = !d.done;
-    else if (filter === "done") matchesFilter = !!d.done;
-    else if (filter === "high") matchesFilter = d.priority === 2;
-    else if (filter === "normal") matchesFilter = d.priority === 1;
-    else if (filter === "none") matchesFilter = d.priority === 0;
+    if (filter === "high") matchesPriority = d.priority === 2;
+    else if (filter === "normal") matchesPriority = d.priority === 1;
+    else if (filter === "none") matchesPriority = d.priority === 0;
 
-    return matchesSearch && matchesFilter;
+    return matchesSearch && matchesPriority;
   });
 
   const pendingDemands = filteredDemands.filter(d => !d.done);
@@ -176,9 +183,7 @@ export default function Dashboard() {
               value={filter}
               onChange={(e: any) => setFilter(e.target.value)}
            >
-             <option value="all">TODAS</option>
-             <option value="pending">PENDENTES</option>
-             <option value="done">CONCLUÍDAS</option>
+             <option value="all">TODAS PRIORIDADES</option>
              <option value="high">ALTA PRIORIDADE</option>
              <option value="normal">NORMAL</option>
              <option value="none">SEM PRIORIDADE</option>

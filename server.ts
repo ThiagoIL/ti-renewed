@@ -255,15 +255,19 @@ app.get("/api/demands", authenticate, async (req, res) => {
 app.post("/api/demands", authenticate, async (req: AuthRequest, res) => {
   const { name, description, priority } = req.body;
   try {
+    // Garantir que priority seja um número válido (0, 1 ou 2)
+    const prioValue = (priority !== undefined && priority !== null) ? parseInt(priority.toString()) : 1;
+    
     const [result]: any = await pool.execute(
       "INSERT INTO demands (name, description, priority) VALUES (?, ?, ?)",
-      [name, description, priority ?? 0]
+      [name || "Sem Nome", description || "", prioValue]
     );
     
     await logAction(req.user!.id, "CREATE_DEMAND", "demands", result.insertId, `Criou demanda: ${name}`);
-    res.status(201).json({ id: result.insertId, name, description, priority, done: 0 });
-  } catch (error) {
-    res.status(500).json({ error: "Erro ao criar demanda" });
+    res.status(201).json({ id: result.insertId, name, description, priority: prioValue, done: 0 });
+  } catch (error: any) {
+    console.error("Erro ao criar demanda:", error);
+    res.status(500).json({ error: "Erro ao criar demanda no servidor: " + error.message });
   }
 });
 
