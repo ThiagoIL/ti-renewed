@@ -11,7 +11,7 @@ dotenv.config();
 
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || "sua_chave_secreta_padrao";
+const JWT_SECRET = process.env.JWT_SECRET || "sebastiao_secret_2024_auth_token";
 
 app.use(express.json());
 app.use(cookieParser());
@@ -71,11 +71,11 @@ async function connectDB() {
       await pool.execute("ALTER TABLE demands ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
     } catch (e) {}
     try {
-      // Corrigir registros com data zerada ou nula ou com erro de epoch
-      await pool.execute("UPDATE demands SET created_at = NOW() WHERE created_at IS NULL OR created_at = '0000-00-00 00:00:00' OR created_at < '1971-01-01'");
+      // Corrigir registros com data zerada ou nula ou com erro de epoch (Fix: Removed explicit '0000-00-00' comparison for strict mode support)
+      await pool.execute("UPDATE demands SET created_at = NOW() WHERE created_at IS NULL OR created_at < '1971-01-01'");
       console.log("Datas de demandas corrigidas.");
     } catch (e) {
-      console.error("Erro ao corrigir datas:", e);
+      console.error("Erro ao corrigir datas (ignorado):", e);
     }
 
     await pool.execute(`

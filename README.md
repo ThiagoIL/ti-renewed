@@ -1,20 +1,33 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# TI Demandas - Sistema de Gestão
 
-# Run and deploy your AI Studio app
+## Configuração do Banco de Dados
 
-This contains everything you need to run your app locally.
+Este sistema utiliza **MySQL** como banco de dados.
 
-View your app in AI Studio: https://ai.studio/apps/39ecfe43-ebc7-4fd9-8c19-e7c6277ceb50
+### 1. Variáveis de Ambiente
+Renomeie o arquivo `.env.example` para `.env` (ou crie um novo) e configure as credenciais:
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=seu_usuario
+DB_PASSWORD=sua_senha
+DB_NAME=ti
+```
 
-## Run Locally
+### 2. Migrações e Inicialização
 
-**Prerequisites:**  Node.js
+O sistema possui dois modos de inicialização do banco:
 
+#### Automático (Recomendado)
+Ao rodar `npm run dev` ou `npm start`, o arquivo `server.ts` executará automaticamente as queries de `CREATE TABLE IF NOT EXISTS`. Ele também criará um usuário administrador padrão caso a tabela de usuários esteja vazia:
+- **E-mail:** admin@ti.com
+- **Senha:** admin123
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+#### Manual (Script SQL)
+Caso prefira criar a estrutura manualmente ou precise importar em um novo servidor:
+1. Localize o arquivo `setup.sql` na raiz do projeto.
+2. Execute o conteúdo desse arquivo no seu gerenciador de banco de dados (MySQL Workbench, HeidiSQL, PHPMyAdmin ou via CLI).
+3. Comando CLI: `mysql -u seu_usuario -p ti < setup.sql`
+
+## Correção de Datas
+Se você encontrar erros de "Incorrect datetime value: '0000-00-00 00:00:00'", o sistema já possui uma lógica de limpeza automática no `server.ts` que converte essas datas inválidas para a data atual (`NOW()`), garantindo compatibilidade com o Modo Estrito do MySQL.

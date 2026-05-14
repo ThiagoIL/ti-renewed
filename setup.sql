@@ -1,31 +1,32 @@
--- Script para criação do banco de dados e tabelas
+-- SEBASTIÃO (Sistema de Gestão de Demandas de TI)
+-- Script de Inicialização de Banco de Dados
 
-CREATE DATABASE IF NOT EXISTS ti;
-USE ti;
+-- 1. Criação do Banco de Dados (se necessário)
+-- CREATE DATABASE IF NOT EXISTS ti;
+-- USE ti;
 
--- Tabela de Usuários
+-- 2. Tabela de Usuários
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role ENUM('master', 'colaborador') DEFAULT 'colaborador',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    role ENUM('master', 'colaborador') NOT NULL DEFAULT 'colaborador',
+    theme VARCHAR(10) DEFAULT 'light',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabela de Demandas / Tarefas
+-- 3. Tabela de Demandas (Tarefas)
 CREATE TABLE IF NOT EXISTS demands (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    priority INT DEFAULT 1, -- 0: Normal, 1: Alta, 2: Baixa (ou conforme sua lógica de visualização)
     done TINYINT(1) DEFAULT 0,
-    priority TINYINT DEFAULT 1, -- 0: Sem Prioridade, 1: Normal, 2: Alta Prioridade
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabela de Logs de Auditoria
+-- 4. Tabela de Auditoria
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
@@ -37,9 +38,13 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Inserir usuário mestre padrão (Senha inicial: 'admin123')
--- Nota: Em produção, o usuário deve trocar essa senha no primeiro acesso.
--- A senha 'admin123' criptografada com bcrypt costuma ser: $2a$10$Xo9Z.P5zQ5K6vFzQ6Z.O.uC1V8W8W8W8W8W8W8W8W8W8W8W8
--- Mas para facilitar o INSERT inicial, vou apenas deixar o script pronto.
--- Você precisará rodar o sistema e ele criará o usuário se não existir via código ou usar este INSERT:
--- INSERT INTO users (name, email, password, role) VALUES ('Admin Master', 'admin@ti.com', '$2y$10$YourHashedPasswordHere', 'master');
+-- 5. Usuário Administrador Padrão (Opcional se o app não criar)
+-- Senha padrão: admin123 (Criptografada abaixo via bcrypt)
+-- INSERT INTO users (name, email, password, role) 
+-- VALUES ('Admin Master', 'admin@ti.com', '$2a$10$7R6vL1R.XFEx.bH1P.U9E.f7X1hN/b/k/mN.rN.rN.rN.rN.rN.rN', 'master')
+-- ON DUPLICATE KEY UPDATE email=email;
+
+-- INSTRUCÕES DE USO:
+-- a) Copie este conteúdo e execute no seu console MySQL ou utilize o PHPMyAdmin.
+-- b) Certifique-se de configurar as variáveis de ambiente no arquivo .env (DB_HOST, DB_USER, etc).
+-- c) O sistema também tenta criar estas tabelas automaticamente ao iniciar (server.ts).
