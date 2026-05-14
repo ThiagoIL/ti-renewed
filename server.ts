@@ -11,7 +11,7 @@ dotenv.config();
 
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || "sebastiao_secret_2024_auth_token";
+const JWT_SECRET = process.env.JWT_SECRET || "sua_chave_secreta_padrao";
 
 app.use(express.json());
 app.use(cookieParser());
@@ -19,13 +19,9 @@ app.use(cookieParser());
 // Configuração do Banco de Dados
 const dbConfig = {
   host: process.env.DB_HOST || "localhost",
-  port: parseInt(process.env.DB_PORT || "3306"),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "ti",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
 };
 
 let pool: any = null;
@@ -71,12 +67,8 @@ async function connectDB() {
       await pool.execute("ALTER TABLE demands ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
     } catch (e) {}
     try {
-      // Corrigir registros com data zerada ou nula ou com erro de epoch (Fix: Removed explicit '0000-00-00' comparison for strict mode support)
-      await pool.execute("UPDATE demands SET created_at = NOW() WHERE created_at IS NULL OR created_at < '1971-01-01'");
-      console.log("Datas de demandas corrigidas.");
-    } catch (e) {
-      console.error("Erro ao corrigir datas (ignorado):", e);
-    }
+      await pool.execute("UPDATE demands SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL OR created_at = '0000-00-00 00:00:00'");
+    } catch (e) {}
 
     await pool.execute(`
       CREATE TABLE IF NOT EXISTS audit_logs (
@@ -363,7 +355,7 @@ app.post("/api/demands", authenticate, async (req: AuthRequest, res) => {
     const prioValue = (priority !== undefined && priority !== null) ? parseInt(priority.toString()) : 1;
     
     const [result]: any = await pool.execute(
-      "INSERT INTO demands (name, description, priority, done, created_at) VALUES (?, ?, ?, ?, NOW())",
+      "INSERT INTO demands (name, description, priority, done) VALUES (?, ?, ?, ?)",
       [name || "Sem Nome", description || "", prioValue, 0]
     );
     

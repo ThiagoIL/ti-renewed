@@ -12,6 +12,7 @@ DB_PORT=3306
 DB_USER=seu_usuario
 DB_PASSWORD=sua_senha
 DB_NAME=ti
+JWT_SECRET=uma_chave_segura
 ```
 
 ### 2. Migrações e Inicialização
