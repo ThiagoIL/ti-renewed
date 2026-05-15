@@ -83,6 +83,7 @@ async function runMigrations() {
       description TEXT,
       priority INT DEFAULT 1,
       done TINYINT(1) DEFAULT 0,
+      sort_order INT DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -90,6 +91,7 @@ async function runMigrations() {
   // Migrações incrementais para 'demands'
   try {
     await pool.execute("ALTER TABLE demands MODIFY id INT UNSIGNED AUTO_INCREMENT");
+    await pool.execute("ALTER TABLE demands ADD COLUMN sort_order INT DEFAULT 0");
   } catch (e) {}
   
   try {
@@ -396,10 +398,39 @@ app.post("/api/users/change-password", authenticate, async (req: AuthRequest, re
 // Demandas / Tarefas
 app.get("/api/demands", authenticate, async (req, res) => {
   try {
-    const [rows]: any = await pool.execute("SELECT * FROM demands ORDER BY created_at DESC");
+    const [rows]: any = await pool.execute("SELECT * FROM demands ORDER BY sort_order ASC, created_at DESC");
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: "Erro ao buscar demandas" });
+  }
+});
+
+app.put("/api/demands/reorder", authenticate, async (req: AuthRequest, res: Response) => {
+  const { orders } = req.body;
+  if (!Array.isArray(orders)) {
+    return res.status(400).json({ error: "Formato inválido" });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    try {
+      for (const item of orders) {
+        await connection.execute(
+          "UPDATE demands SET sort_order = ? WHERE id = ?",
+          [item.sort_order, item.id]
+        );
+      }
+      await connection.commit();
+      res.json({ success: true });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    res.status(500).json({ error: "Erro ao reordenar" });
   }
 });
 
@@ -409,10 +440,14 @@ app.post("/api/demands", authenticate, async (req: AuthRequest, res) => {
     // Garantir que priority seja um número válido (0, 1 ou 2)
     const prioValue = (priority !== undefined && priority !== null) ? parseInt(priority.toString()) : 1;
     
+    // Pegar o menor sort_order atual para colocar a nova demanda no topo (menor valor = início da lista)
+    const [orders]: any = await pool.execute("SELECT MIN(sort_order) as minOrder FROM demands");
+    const nextOrder = (orders[0].minOrder !== null) ? orders[0].minOrder - 1 : 0;
+
     // Inserimos com NOW() explicitamente para garantir que a data seja gravada mesmo se houver conflito de configuração de servidor
     const [result]: any = await pool.execute(
-      "INSERT INTO demands (name, description, priority, done, created_at) VALUES (?, ?, ?, ?, NOW())",
-      [name || "Sem Nome", description || "", prioValue, 0]
+      "INSERT INTO demands (name, description, priority, done, sort_order, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+      [name || "Sem Nome", description || "", prioValue, 0, nextOrder]
     );
     
     // Buscamos o registro inserido para retornar com a data correta do banco

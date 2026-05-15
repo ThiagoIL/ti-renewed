@@ -5,9 +5,10 @@ import {
   Plus, CheckCircle2, Circle, AlertCircle, 
   Trash2, Edit3, Eye, Search, Filter,
   CheckCircle, Clock,
-  X
+  X, GripVertical
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 interface Demand {
   id: number;
@@ -15,6 +16,7 @@ interface Demand {
   description: string;
   done: number;
   priority: number;
+  sort_order: number;
   created_at: string;
 }
 
@@ -69,6 +71,36 @@ export default function Dashboard() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onDragEnd = async (result: any) => {
+    if (!result.destination) return;
+
+    const currentList = activeTab === "pending" ? pendingDemands : doneDemands;
+    const reorderedItems = Array.from(currentList);
+    const [removed] = reorderedItems.splice(result.source.index, 1);
+    reorderedItems.splice(result.destination.index, 0, removed);
+
+    // Update local state optimistically
+    const updatedWithOrders = reorderedItems.map((item, index) => ({
+      ...item,
+      sort_order: index
+    }));
+
+    const finalItems = activeTab === "pending" 
+      ? [...updatedWithOrders, ...doneDemands] 
+      : [...pendingDemands, ...updatedWithOrders];
+    
+    setDemands(finalItems);
+
+    try {
+      await api.put("/demands/reorder", {
+        orders: updatedWithOrders.map(item => ({ id: item.id, sort_order: item.sort_order }))
+      });
+    } catch (err) {
+      console.error("Erro ao reordenar:", err);
+      fetchDemands();
     }
   };
 
@@ -155,8 +187,8 @@ export default function Dashboard() {
     return matchesSearch && matchesPriority;
   });
 
-  const pendingDemands = filteredDemands.filter(d => !d.done);
-  const doneDemands = filteredDemands.filter(d => !!d.done);
+  const pendingDemands = filteredDemands.filter(d => !d.done).sort((a,b) => a.sort_order - b.sort_order);
+  const doneDemands = filteredDemands.filter(d => !!d.done).sort((a,b) => a.sort_order - b.sort_order);
 
   return (
     <div className="space-y-6">
@@ -245,90 +277,130 @@ export default function Dashboard() {
         </div>
 
         <div className="p-6 bg-slate-50/50 dark:bg-slate-950/50">
-          <div className="space-y-4">
-            {loading ? (
-              <div className="p-12 text-center text-slate-400 font-medium animate-pulse">Sincronizando Banco de Dados...</div>
-            ) : (activeTab === "pending" ? pendingDemands : doneDemands).length === 0 ? (
-              <div className="p-12 text-center text-slate-400 font-medium italic">Nenhum chamado encontrado nesta categoria</div>
-            ) : (
-              (activeTab === "pending" ? pendingDemands : doneDemands).map((demand) => (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="demands-list">
+              {(provided) => (
                 <div 
-                  key={demand.id} 
-                  className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-100 dark:border-slate-800 soft-shadow hover:border-blue-200 dark:hover:border-blue-900 transition-all group flex flex-col md:flex-row md:items-center gap-6"
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-4"
                 >
-                  <div className="flex-shrink-0">
-                    <button 
-                      onClick={() => handleToggleDone(demand)}
-                      className={`p-3 rounded-2xl transition-all ${demand.done ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:scale-110 hover:text-blue-500'}`}
-                    >
-                      {demand.done ? <CheckCircle2 className="w-8 h-8" /> : <Circle className="w-8 h-8" />}
-                    </button>
-                  </div>
-                  
-                  <div className="flex-grow">
-                    <div className="flex items-center gap-3 mb-1">
-                      {demand.priority === 2 ? (
-                        <span className="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-black px-2 py-1 rounded-lg border border-rose-100 dark:border-rose-900 uppercase">Alta Prio</span>
-                      ) : demand.priority === 1 ? (
-                        <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[9px] font-black px-2 py-1 rounded-lg border border-blue-100 dark:border-blue-900 uppercase">Normal</span>
-                      ) : (
-                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 text-[9px] font-black px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 uppercase">Sem Prio</span>
-                      )}
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded leading-none">#{demand.id}</span>
-                    </div>
-                    <h3 className={`text-lg font-bold text-slate-800 dark:text-slate-100 ${demand.done ? 'line-through opacity-40' : ''}`}>
-                      {demand.name}
-                    </h3>
-                    <div className="flex items-center gap-4 mt-2">
-                       <span className="text-xs text-slate-400 flex items-center gap-1">
-                         <Clock className="w-3 h-3" />
-                         Criado em {formatDate(demand.created_at)}
-                       </span>
-                    </div>
-                  </div>
+                  {loading ? (
+                    <div className="p-12 text-center text-slate-400 font-medium animate-pulse">Sincronizando...</div>
+                  ) : (activeTab === "pending" ? pendingDemands : doneDemands).length === 0 ? (
+                    <div className="p-12 text-center text-slate-400 font-medium italic">Nenhum chamado encontrado</div>
+                  ) : (
+                    (activeTab === "pending" ? pendingDemands : doneDemands).map((demand, index) => (
+                      <Draggable key={demand.id} draggableId={demand.id.toString()} index={index}>
+                        {(provided, snapshot) => (
+                          <div 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`bg-white dark:bg-slate-900 rounded-2xl p-5 border ${snapshot.isDragging ? 'border-blue-500 shadow-2xl scale-[1.02] z-10' : 'border-slate-100 dark:border-slate-800'} transition-all group flex items-center gap-4 cursor-pointer`}
+                            onClick={() => setSelectedDemand(demand)}
+                          >
+                            <div 
+                              {...provided.dragHandleProps}
+                              className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing p-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <GripVertical className="w-5 h-5" />
+                            </div>
 
-                  <div className="flex items-center gap-2 justify-end">
-                    <button 
-                      onClick={() => setSelectedDemand(demand)}
-                      className="p-3 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all"
-                    >
-                      <Eye className="w-6 h-6" />
-                    </button>
-                    <button 
-                      onClick={() => handleEdit(demand)}
-                      className="p-3 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-slate-800 rounded-xl transition-all"
-                    >
-                      <Edit3 className="w-6 h-6" />
-                    </button>
-                    
-                    {isDeleting === demand.id ? (
-                      <div className="flex gap-2 animate-in fade-in slide-in-from-right-2 duration-200">
-                        <button 
-                           onClick={() => handleDelete(demand.id)}
-                           className="bg-rose-600 text-white text-xs font-black px-4 py-2 rounded-xl shadow-lg hover:bg-rose-700"
-                        >
-                          EXCLUIR
-                        </button>
-                        <button 
-                           onClick={() => setIsDeleting(null)}
-                           className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-2 rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={() => setIsDeleting(demand.id)}
-                        className="p-3 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 rounded-xl transition-all"
-                      >
-                        <Trash2 className="w-6 h-6" />
-                      </button>
-                    )}
-                  </div>
+                            <div className="flex-shrink-0">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleDone(demand);
+                                }}
+                                className={`p-3 rounded-2xl transition-all ${demand.done ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 hover:scale-110 hover:text-blue-500'}`}
+                              >
+                                {demand.done ? <CheckCircle2 className="w-8 h-8" /> : <Circle className="w-8 h-8" />}
+                              </button>
+                            </div>
+                            
+                            <div className="flex-grow min-w-0">
+                              <div className="flex items-center gap-3 mb-1">
+                                {demand.priority === 2 ? (
+                                  <span className="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-[9px] font-black px-2 py-1 rounded-lg border border-rose-100 dark:border-rose-900 uppercase">Alta Prio</span>
+                                ) : demand.priority === 1 ? (
+                                  <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[9px] font-black px-2 py-1 rounded-lg border border-blue-100 dark:border-blue-900 uppercase">Normal</span>
+                                ) : (
+                                  <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 text-[9px] font-black px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 uppercase">Sem Prio</span>
+                                )}
+                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-600 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded leading-none">#{demand.id}</span>
+                              </div>
+                              <h3 className={`text-lg font-bold text-slate-800 dark:text-slate-100 truncate ${demand.done ? 'line-through opacity-40' : ''}`}>
+                                {demand.name}
+                              </h3>
+                              <div className="flex items-center gap-4 mt-2">
+                                <span className="text-xs text-slate-400 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  Criado em {formatDate(demand.created_at)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 justify-end flex-shrink-0">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedDemand(demand);
+                                }}
+                                className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all hidden md:flex"
+                              >
+                                <Eye className="w-6 h-6" />
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(demand);
+                                }}
+                                className="p-2 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-slate-800 rounded-xl transition-all"
+                              >
+                                <Edit3 className="w-6 h-6" />
+                              </button>
+                              
+                              {isDeleting === demand.id ? (
+                                <div 
+                                  className="flex gap-2 animate-in fade-in slide-in-from-right-2 duration-200"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button 
+                                     onClick={() => handleDelete(demand.id)}
+                                     className="bg-rose-600 text-white text-xs font-black px-4 py-2 rounded-xl shadow-lg hover:bg-rose-700"
+                                  >
+                                    EXCLUIR
+                                  </button>
+                                  <button 
+                                     onClick={() => setIsDeleting(null)}
+                                     className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-2 rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsDeleting(demand.id);
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-slate-800 rounded-xl transition-all"
+                                >
+                                  <Trash2 className="w-6 h-6" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))
+                  )}
+                  {provided.placeholder}
                 </div>
-              ))
-            )}
-          </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </div>
       </div>
 
@@ -481,7 +553,7 @@ export default function Dashboard() {
                  </div>
                  
                  <div className="space-y-6">
-                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 min-h-[160px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                   <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-100 dark:border-slate-800 min-h-[160px] text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                       {selectedDemand.description || "Nenhum detalhe adicional fornecido."}
                    </div>
 
