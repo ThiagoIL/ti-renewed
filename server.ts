@@ -6,99 +6,154 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
-const JWT_SECRET = process.env.JWT_SECRET || "sua_chave_secreta_padrao";
+
+// Validação de variáveis de ambiente críticas
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("ERRO CRÍTICO: JWT_SECRET não configurado no ambiente de produção.");
+}
+const SECRET_KEY = JWT_SECRET || "sebastiao_fallback_secret_only_for_dev";
+
+// Segurança Básica com Helmet
+app.use(helmet({
+  contentSecurityPolicy: false, // Desativado para facilitar integração com Vite dev server se necessário
+}));
 
 app.use(express.json());
 app.use(cookieParser());
 
+// Limitador de taxa para login (Prevenção de Brute Force)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // Limite de 10 tentativas por IP
+  message: { error: "Muitas tentativas de login. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Configuração do Banco de Dados
 const dbConfig = {
   host: process.env.DB_HOST || "localhost",
+  port: parseInt(process.env.DB_PORT || "3306"),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "ti",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 };
 
 let pool: any = null;
 
+async function runMigrations() {
+  console.log("Iniciando migrações do banco de dados...");
+
+  // 1. Tabela de Usuários
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password VARCHAR(255) NOT NULL,
+      role ENUM('master', 'colaborador') NOT NULL DEFAULT 'colaborador',
+      theme VARCHAR(10) DEFAULT 'light',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Migrações incrementais para 'users'
+  try {
+    await pool.execute("ALTER TABLE users MODIFY id INT UNSIGNED AUTO_INCREMENT");
+    await pool.execute("ALTER TABLE users ADD COLUMN role ENUM('master', 'colaborador') NOT NULL DEFAULT 'colaborador'");
+    await pool.execute("ALTER TABLE users ADD COLUMN theme VARCHAR(10) DEFAULT 'light'");
+  } catch (e) {}
+
+  // 2. Tabela de Demandas
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS demands (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      priority INT DEFAULT 1,
+      done TINYINT(1) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Migrações incrementais para 'demands'
+  try {
+    await pool.execute("ALTER TABLE demands MODIFY id INT UNSIGNED AUTO_INCREMENT");
+  } catch (e) {}
+  
+  try {
+    // Tenta adicionar a coluna. Se já existir, vai para o próximo passo.
+    await pool.execute("ALTER TABLE demands ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+  } catch (e) {
+    // Se a coluna já existir, garante que ela tenha o DEFAULT correto
+    try {
+      await pool.execute("ALTER TABLE demands MODIFY COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+    } catch (err) {}
+  }
+  
+  try {
+    // Corrigir registros com data zerada ou nula ou com erro de epoch (Fix: Removed explicit '0000-00-00' comparison for strict mode support)
+    await pool.execute("UPDATE demands SET created_at = NOW() WHERE created_at IS NULL OR created_at < '1971-01-01'");
+  } catch (e) {}
+
+  // 3. Tabela de Auditoria
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+      user_id INT UNSIGNED,
+      action VARCHAR(255) NOT NULL,
+      target_type VARCHAR(50),
+      target_id INT UNSIGNED,
+      details TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+
+  try {
+    await pool.execute("ALTER TABLE audit_logs MODIFY id INT UNSIGNED AUTO_INCREMENT");
+    await pool.execute("ALTER TABLE audit_logs MODIFY user_id INT UNSIGNED");
+    await pool.execute("ALTER TABLE audit_logs ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+  } catch (e) {}
+
+  // 4. Criar usuário Master inicial se não houver nenhum
+  const [rows]: any = await pool.execute("SELECT * FROM users WHERE role = 'master' LIMIT 1");
+  if (rows.length === 0) {
+    const hashedPassword = await bcrypt.hash("admin123", 10);
+    await pool.execute(
+      "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
+      ["Admin Master", "admin@ti.com", hashedPassword, "master"]
+    );
+    console.log("Usuário Master padrão inicializado: admin@ti.com / admin123");
+  }
+
+  console.log("Migrações concluídas com sucesso.");
+}
+
 async function connectDB() {
   try {
-    pool = await mysql.createPool(dbConfig);
+    pool = mysql.createPool(dbConfig);
+    // Testar conexão
+    const connection = await pool.getConnection();
     console.log("Conectado ao MySQL com sucesso!");
-    
-    // Inicialização do Banco de Dados
-    await pool.execute(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        role ENUM('master', 'colaborador') NOT NULL DEFAULT 'colaborador',
-        theme VARCHAR(10) DEFAULT 'light',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    connection.release();
 
-    // Garantir que a coluna 'theme' existe (para bancos já criados)
-    try {
-      await pool.execute("ALTER TABLE users ADD COLUMN theme VARCHAR(10) DEFAULT 'light'");
-    } catch (e) {
-      // Coluna já existe, ignore
-    }
-
-    await pool.execute(`
-      CREATE TABLE IF NOT EXISTS demands (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        priority INT DEFAULT 1,
-        done TINYINT(1) DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    // Garantir que a coluna 'created_at' existe em demandas e auditoria
-    try {
-      await pool.execute("ALTER TABLE demands ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-    } catch (e) {}
-    try {
-      await pool.execute("UPDATE demands SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL OR created_at = '0000-00-00 00:00:00'");
-    } catch (e) {}
-
-    await pool.execute(`
-      CREATE TABLE IF NOT EXISTS audit_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT,
-        action VARCHAR(255) NOT NULL,
-        target_type VARCHAR(50),
-        target_id INT,
-        details TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-      )
-    `);
-    
-    try {
-      await pool.execute("ALTER TABLE audit_logs ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-    } catch (e) {}
-
-    // Teste de conexão e criação do admin inicial se necessário
-    const [rows]: any = await pool.execute("SELECT * FROM users WHERE role = 'master' LIMIT 1");
-    if (rows.length === 0) {
-      const hashedPassword = await bcrypt.hash("admin123", 10);
-      await pool.execute(
-        "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)",
-        ["Admin Master", "admin@ti.com", hashedPassword, "master"]
-      );
-      console.log("Usuário Master padrão criado (admin@ti.com / admin123)");
-    }
-  } catch (error) {
-    console.error("Erro ao conectar ao MySQL:", error);
+    await runMigrations();
+  } catch (error: any) {
+    console.error("ERRO CRÍTICO: Falha ao conectar ou inicializar o banco de dados.");
+    console.error(`Mensagem: ${error.message}`);
+    console.error("Verifique suas configurações no arquivo .env");
   }
 }
 
@@ -124,7 +179,7 @@ const authenticate = async (req: AuthRequest, res: Response, next: NextFunction)
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, SECRET_KEY) as any;
     req.user = decoded;
     next();
   } catch (error) {
@@ -156,7 +211,7 @@ async function logAction(userId: number, action: string, targetType: string, tar
 // --- API ROUTES ---
 
 // Auth
-app.post("/api/auth/login", async (req: Request, res: Response) => {
+app.post("/api/auth/login", loginLimiter, async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
@@ -176,7 +231,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
 
     const token = jwt.sign(
       { id: user.id, name: user.name, email: user.email, role: user.role, theme: user.theme || 'light' },
-      JWT_SECRET,
+      SECRET_KEY,
       { expiresIn: "1d" }
     );
 
@@ -225,7 +280,7 @@ app.put("/api/auth/theme", authenticate, async (req: AuthRequest, res) => {
     // Atualizar o cookie com o novo tema
     const token = jwt.sign(
       { ...req.user, theme },
-      JWT_SECRET,
+      SECRET_KEY,
       { expiresIn: "1d" }
     );
 
@@ -354,13 +409,18 @@ app.post("/api/demands", authenticate, async (req: AuthRequest, res) => {
     // Garantir que priority seja um número válido (0, 1 ou 2)
     const prioValue = (priority !== undefined && priority !== null) ? parseInt(priority.toString()) : 1;
     
+    // Inserimos com NOW() explicitamente para garantir que a data seja gravada mesmo se houver conflito de configuração de servidor
     const [result]: any = await pool.execute(
-      "INSERT INTO demands (name, description, priority, done) VALUES (?, ?, ?, ?)",
+      "INSERT INTO demands (name, description, priority, done, created_at) VALUES (?, ?, ?, ?, NOW())",
       [name || "Sem Nome", description || "", prioValue, 0]
     );
     
+    // Buscamos o registro inserido para retornar com a data correta do banco
+    const [rows]: any = await pool.execute("SELECT * FROM demands WHERE id = ?", [result.insertId]);
+    const newDemand = rows[0];
+
     await logAction(req.user!.id, "CREATE_DEMAND", "demands", result.insertId, `Criou demanda: ${name}`);
-    res.status(201).json({ id: result.insertId, name, description, priority: prioValue, done: 0 });
+    res.status(201).json(newDemand);
   } catch (error: any) {
     console.error("Erro ao criar demanda:", error);
     res.status(500).json({ error: "Erro ao criar demanda no servidor: " + error.message });
