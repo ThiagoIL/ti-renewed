@@ -1,10 +1,39 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../App";
-import { LogOut, User, ClipboardList, Users, History, ShieldAlert, LayoutDashboard, Sun, Moon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { io } from "socket.io-client";
+import { LogOut, User, ClipboardList, Users, History, ShieldAlert, LayoutDashboard, Sun, Moon, Zap, ZapOff } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout, theme, toggleTheme } = useAuth();
   const location = useLocation();
+  const [isOnline, setIsOnline] = useState(false);
+
+  useEffect(() => {
+    const socket = io({
+      transports: ['polling', 'websocket'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+    });
+
+    socket.on("connect", () => {
+      console.log("Navbar Socket conectado");
+      setIsOnline(true);
+    });
+
+    socket.on("disconnect", () => {
+      setIsOnline(false);
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Navbar Socket error:", err);
+      setIsOnline(false);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const navItems = [
     { path: "/", label: "Painel", icon: LayoutDashboard },
@@ -48,6 +77,11 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-4">
+            <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black border transition-all ${isOnline ? 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/20' : 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/20'}`}>
+                {isOnline ? <Zap className="w-2.5 h-2.5 fill-current" /> : <ZapOff className="w-2.5 h-2.5" />}
+                {isOnline ? 'SINC. ATIVA' : 'OFFLINE'}
+            </div>
+
             <button
                onClick={toggleTheme}
                className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-lg transition-all border border-transparent hover:border-blue-100 dark:hover:border-slate-700"

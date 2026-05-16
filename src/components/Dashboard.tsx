@@ -40,32 +40,16 @@ export default function Dashboard() {
   // Form State
   const [formData, setFormData] = useState({ name: "", description: "", priority: 1 }); // 1 = Normal default
 
-  const [isOnline, setIsOnline] = useState(false);
-
   useEffect(() => {
     fetchDemands();
     
     // Configuração do Socket.io para atualizações em tempo real
     const socket = io({
       transports: ['polling', 'websocket'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
     });
 
-    socket.on("connect", () => {
-      console.log("Socket conectado com ID:", socket.id);
-      setIsOnline(true);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("Socket desconectado");
-      setIsOnline(false);
-    });
-
-    socket.on("connect_error", (err) => {
-      console.error("Erro na conexão Socket.io:", err);
-      setIsOnline(false);
-    });
     socket.on("demand_created", (newDemand: Demand) => {
       setDemands(prev => {
         if (prev.find(d => d.id === newDemand.id)) return prev;
@@ -256,13 +240,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-             <h1 className="text-4xl font-sans font-black text-slate-900 dark:text-white tracking-tight">TI Demandas</h1>
-             <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold border transition-all ${isOnline ? 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-900/30' : 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/30'}`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-                {isOnline ? 'SINC. ONLINE' : 'OFFLINE'}
-             </div>
-          </div>
+           <h1 className="text-4xl font-sans font-black text-slate-900 dark:text-white tracking-tight">TI Demandas</h1>
           <p className="text-slate-500 font-medium">Gestão centralizada de chamados de TI</p>
         </div>
         
