@@ -19,7 +19,9 @@ export default function AuditLogs() {
   useEffect(() => {
     fetchLogs();
 
-    const socket = io();
+    const socket = io({
+      transports: ['polling', 'websocket']
+    });
     socket.on("log_added", () => {
       fetchLogs();
     });

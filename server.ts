@@ -19,7 +19,8 @@ const io = new Server(httpServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE"]
-  }
+  },
+  transports: ['polling', 'websocket']
 });
 
 const PORT = 3000;

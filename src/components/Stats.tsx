@@ -29,7 +29,9 @@ export default function Stats() {
   useEffect(() => {
     fetchDemands();
 
-    const socket = io();
+    const socket = io({
+      transports: ['polling', 'websocket']
+    });
     
     socket.on("demand_created", (newDemand: Demand) => {
       setDemands(prev => {
