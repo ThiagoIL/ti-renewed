@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
+import { createServer } from "http";
+import { Server } from "socket.io";
 import mysql from "mysql2/promise";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -12,7 +14,24 @@ import { rateLimit } from "express-rate-limit";
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
 const PORT = 3000;
+
+// Socket.io connection handling
+io.on("connection", (socket) => {
+  console.log("Novo cliente conectado:", socket.id);
+  
+  socket.on("disconnect", () => {
+    console.log("Cliente desconectado:", socket.id);
+  });
+});
 
 // Validação de variáveis de ambiente críticas
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -201,10 +220,13 @@ const isMaster = (req: AuthRequest, res: Response, next: NextFunction): void => 
 async function logAction(userId: number, action: string, targetType: string, targetId: number | null, details: string) {
   if (!pool) return;
   try {
-    await pool.execute(
+    const [result]: any = await pool.execute(
       "INSERT INTO audit_logs (user_id, action, target_type, target_id, details) VALUES (?, ?, ?, ?, ?)",
       [userId, action, targetType, targetId, details]
     );
+
+    // Buscar o log recém criado para obter o nome do usuário etc (se necessário) ou apenas emitir para refetch
+    io.emit("log_added");
   } catch (error) {
     console.error("Erro ao registrar log de auditoria:", error);
   }
@@ -422,6 +444,7 @@ app.put("/api/demands/reorder", authenticate, async (req: AuthRequest, res: Resp
         );
       }
       await connection.commit();
+      io.emit("demand_reordered", orders);
       res.json({ success: true });
     } catch (error) {
       await connection.rollback();
@@ -455,6 +478,7 @@ app.post("/api/demands", authenticate, async (req: AuthRequest, res) => {
     const newDemand = rows[0];
 
     await logAction(req.user!.id, "CREATE_DEMAND", "demands", result.insertId, `Criou demanda: ${name}`);
+    io.emit("demand_created", newDemand);
     res.status(201).json(newDemand);
   } catch (error: any) {
     console.error("Erro ao criar demanda:", error);
@@ -472,6 +496,7 @@ app.put("/api/demands/:id", authenticate, async (req: AuthRequest, res) => {
     );
     
     await logAction(req.user!.id, "UPDATE_DEMAND", "demands", parseInt(id), `Atualizou demanda: ${name}`);
+    io.emit("demand_updated", { id, name, description, priority, done });
     res.json({ id, name, description, priority, done });
   } catch (error) {
     res.status(500).json({ error: "Erro ao atualizar demanda" });
@@ -488,6 +513,7 @@ app.delete("/api/demands/:id", authenticate, async (req: AuthRequest, res) => {
     await pool.execute("DELETE FROM demands WHERE id = ?", [id]);
     
     await logAction(req.user!.id, "DELETE_DEMAND", "demands", parseInt(id), `Deletou demanda: ${demandName}`);
+    io.emit("demand_deleted", id);
     res.json({ message: "Demanda excluída com sucesso" });
   } catch (error) {
     res.status(500).json({ error: "Erro ao excluir demanda" });
@@ -526,7 +552,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`);
   });
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useLocation } from "react-router-dom";
 import { api } from "../lib/api";
+import { io } from "socket.io-client";
 import { 
   Plus, CheckCircle2, Circle, AlertCircle, 
   Trash2, Edit3, Eye, Search, Filter,
@@ -42,6 +43,47 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDemands();
     
+    // Configuração do Socket.io para atualizações em tempo real
+    const socket = io();
+
+    socket.on("demand_created", (newDemand: Demand) => {
+      setDemands(prev => {
+        if (prev.find(d => d.id === newDemand.id)) return prev;
+        return [newDemand, ...prev];
+      });
+    });
+
+    socket.on("demand_updated", (updatedDemand: Partial<Demand> & { id: number }) => {
+      setDemands(prev => prev.map(d => 
+        d.id === updatedDemand.id ? { ...d, ...updatedDemand } : d
+      ));
+    });
+
+    socket.on("demand_deleted", (id: string | number) => {
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      setDemands(prev => prev.filter(d => d.id !== numericId));
+      if (selectedDemand?.id === numericId) setSelectedDemand(null);
+    });
+
+    socket.on("demand_reordered", (orders: { id: number, sort_order: number }[]) => {
+      setDemands(prev => {
+        const newDemands = [...prev];
+        orders.forEach(order => {
+          const index = newDemands.findIndex(d => d.id === order.id);
+          if (index !== -1) {
+            newDemands[index] = { ...newDemands[index], sort_order: order.sort_order };
+          }
+        });
+        return newDemands;
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
     // Check for filter in navigation state
     if (location.state?.filter) {
       const newFilter = location.state.filter;

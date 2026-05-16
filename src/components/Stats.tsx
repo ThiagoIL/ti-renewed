@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import { io } from "socket.io-client";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -27,6 +28,35 @@ export default function Stats() {
 
   useEffect(() => {
     fetchDemands();
+
+    const socket = io();
+    
+    socket.on("demand_created", (newDemand: Demand) => {
+      setDemands(prev => {
+        if (prev.find(d => d.id === newDemand.id)) return prev;
+        return [newDemand, ...prev];
+      });
+    });
+
+    socket.on("demand_updated", (updatedDemand: Partial<Demand> & { id: number }) => {
+      setDemands(prev => prev.map(d => 
+        d.id === updatedDemand.id ? { ...d, ...updatedDemand } : d
+      ));
+    });
+
+    socket.on("demand_deleted", (id: string | number) => {
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      setDemands(prev => prev.filter(d => d.id !== numericId));
+    });
+
+    socket.on("demand_reordered", (orders: { id: number, sort_order: number }[]) => {
+      // Reordering usually doesn't affect stats unless they depend on order, but it's good to sync
+      fetchDemands();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   const handleCardClick = (filter: string) => {

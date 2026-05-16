@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../lib/api";
+import { io } from "socket.io-client";
 import { Activity, Terminal } from "lucide-react";
 
 interface Log {
@@ -17,6 +18,15 @@ export default function AuditLogs() {
 
   useEffect(() => {
     fetchLogs();
+
+    const socket = io();
+    socket.on("log_added", () => {
+      fetchLogs();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   const fetchLogs = async () => {
