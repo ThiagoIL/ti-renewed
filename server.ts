@@ -491,15 +491,38 @@ app.put("/api/demands/:id", authenticate, async (req: AuthRequest, res) => {
   const { id } = req.params;
   const { name, description, priority, done } = req.body;
   try {
+    // Buscar estado atual para ver se o status 'done' mudou
+    const [currentRows]: any = await pool.execute("SELECT done, sort_order FROM demands WHERE id = ?", [id]);
+    if (currentRows.length === 0) {
+      return res.status(404).json({ error: "Demanda não encontrada" });
+    }
+    
+    const oldDone = currentRows[0].done;
+    const newDone = done ? 1 : 0;
+    let newSortOrder = currentRows[0].sort_order;
+
+    // Se o status mudou, vamos colocar no topo da nova lista
+    if (oldDone !== newDone) {
+      const [orders]: any = await pool.execute("SELECT MIN(sort_order) as minOrder FROM demands WHERE done = ?", [newDone]);
+      newSortOrder = (orders[0].minOrder !== null) ? orders[0].minOrder - 1 : 0;
+    }
+
     await pool.execute(
-      "UPDATE demands SET name = ?, description = ?, priority = ?, done = ? WHERE id = ?",
-      [name, description, priority ?? 0, done ? 1 : 0, id]
+      "UPDATE demands SET name = ?, description = ?, priority = ?, done = ?, sort_order = ? WHERE id = ?",
+      [name, description, priority ?? 0, newDone, newSortOrder, id]
     );
     
-    await logAction(req.user!.id, "UPDATE_DEMAND", "demands", parseInt(id), `Atualizou demanda: ${name}`);
-    io.emit("demand_updated", { id, name, description, priority, done });
-    res.json({ id, name, description, priority, done });
+    const details = oldDone !== newDone 
+      ? `Alterou status para ${newDone ? 'Concluído' : 'Pendente'}: ${name}`
+      : `Atualizou demanda: ${name}`;
+
+    await logAction(req.user!.id, "UPDATE_DEMAND", "demands", parseInt(id), details);
+    
+    const updatedDemand = { id: parseInt(id), name, description, priority, done: newDone, sort_order: newSortOrder };
+    io.emit("demand_updated", updatedDemand);
+    res.json(updatedDemand);
   } catch (error) {
+    console.error("Erro ao atualizar demanda:", error);
     res.status(500).json({ error: "Erro ao atualizar demanda" });
   }
 });

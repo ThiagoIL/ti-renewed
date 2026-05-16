@@ -40,14 +40,30 @@ export default function Dashboard() {
   // Form State
   const [formData, setFormData] = useState({ name: "", description: "", priority: 1 }); // 1 = Normal default
 
+  const [isOnline, setIsOnline] = useState(false);
+
   useEffect(() => {
     fetchDemands();
     
     // Configuração do Socket.io para atualizações em tempo real
     const socket = io({
       transports: ['polling', 'websocket'],
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 20,
       reconnectionDelay: 2000,
+    });
+
+    socket.on("connect", () => {
+      console.log("Dashboard Socket conectado:", socket.id);
+      setIsOnline(true);
+    });
+
+    socket.on("disconnect", () => {
+      setIsOnline(false);
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("Dashboard Socket error:", err);
+      setIsOnline(false);
     });
 
     socket.on("demand_created", (newDemand: Demand) => {
@@ -61,6 +77,14 @@ export default function Dashboard() {
       setDemands(prev => prev.map(d => 
         d.id === updatedDemand.id ? { ...d, ...updatedDemand } : d
       ));
+      
+      // Update selected demand if it's the one being updated
+      setSelectedDemand(prev => {
+        if (prev?.id === updatedDemand.id) {
+          return { ...prev, ...updatedDemand } as Demand;
+        }
+        return prev;
+      });
     });
 
     socket.on("demand_deleted", (id: string | number) => {
@@ -187,13 +211,25 @@ export default function Dashboard() {
   };
 
   const handleToggleDone = async (demand: Demand) => {
+    const newStatus = demand.done ? 0 : 1;
+    
+    // Optimistic Update
+    setDemands(prev => prev.map(d => 
+      d.id === demand.id ? { ...d, done: newStatus } : d
+    ));
+
     try {
       await api.put(`/demands/${demand.id}`, {
         ...demand,
-        done: demand.done ? 0 : 1
+        done: newStatus
       });
-      fetchDemands();
+      // fetchDemands as backup if needed, but socket should handle it
+      // fetchDemands(); 
     } catch (err) {
+      // Revert on error
+      setDemands(prev => prev.map(d => 
+        d.id === demand.id ? { ...d, done: demand.done } : d
+      ));
       alert("Erro ao atualizar status");
     }
   };
@@ -233,14 +269,20 @@ export default function Dashboard() {
     return matchesSearch && matchesPriority;
   });
 
-  const pendingDemands = filteredDemands.filter(d => !d.done).sort((a,b) => a.sort_order - b.sort_order);
-  const doneDemands = filteredDemands.filter(d => !!d.done).sort((a,b) => a.sort_order - b.sort_order);
+  const pendingDemands = filteredDemands.filter(d => Number(d.done) === 0).sort((a,b) => a.sort_order - b.sort_order);
+  const doneDemands = filteredDemands.filter(d => Number(d.done) === 1).sort((a,b) => a.sort_order - b.sort_order);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-           <h1 className="text-4xl font-sans font-black text-slate-900 dark:text-white tracking-tight">TI Demandas</h1>
+           <div className="flex items-center gap-3">
+             <h1 className="text-4xl font-sans font-black text-slate-900 dark:text-white tracking-tight">TI Demandas</h1>
+             <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold border transition-all ${isOnline ? 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-900/30' : 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/30'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                {isOnline ? 'SINC. ONLINE' : 'SINC. OFF'}
+             </div>
+           </div>
           <p className="text-slate-500 font-medium">Gestão centralizada de chamados de TI</p>
         </div>
         
